@@ -8,7 +8,17 @@ const (
 	Follower
 )
 
+type Address struct {
+	IpAddress string
+	Port      int
+}
+
 type Node struct {
-	state State
-	// TODO: Complete this
+	state                State
+	electionTerm         int
+	app                  Application
+	address              Address
+	clusterLeaderAddress Address
+	clusterAddresses     []Address
+	log                  []string
 }
