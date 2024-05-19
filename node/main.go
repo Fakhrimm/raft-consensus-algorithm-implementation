@@ -1,8 +1,8 @@
 package main
 
 import (
+	node "Node/lib"
 	"flag"
-	Node "raft-sister/src/node/lib"
 )
 
 func main() {
@@ -12,13 +12,11 @@ func main() {
 
 	flag.StringVar(&addr, "addr", "0.0.0.0:60000", "The port on which the server will listen")
 	flag.IntVar(&timeoutAvg, "timeout", 15, "The average time before a node declares a timeout")
-	flag.StringVar(&hostfile, "hostfile", "./config/Hostfile", "The list of all servers in the cluster")
+	flag.StringVar(&hostfile, "hostfile", "/config/Hostfile", "The list of all servers in the cluster")
 	flag.Parse()
 
-	var node = Node.NewNode(addr, timeoutAvg, nil)
-
-	node.Init(hostfile)
-	node.CheckSanity()
+	node := node.NewNode(addr)
+	node.Init(".."+hostfile, timeoutAvg)
 
 	for node.Running {
 	}

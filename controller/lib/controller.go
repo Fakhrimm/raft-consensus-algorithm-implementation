@@ -1,12 +1,12 @@
-package Controller
+package controller
 
 import (
+	"Controller/grpc/comm"
 	"bufio"
 	"context"
 	"fmt"
 	"log"
 	"os"
-	"raft-sister/src/proto/comm"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -95,6 +95,7 @@ func (c *Controller) Run() {
 			}
 			c.Call(parts[1], func() {
 				_, err_ping := c.client.Stop(context.Background(), &comm.PingRequest{})
+
 				fmt.Println("Server response:", err_ping)
 			})
 

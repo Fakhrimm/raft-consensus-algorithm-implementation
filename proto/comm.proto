@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package comm;
 
-option go_package = "src/proto/comm";
+option go_package = "grpc/comm";
 
 service CommService {
   rpc Ping (PingRequest) returns (PingResponse);

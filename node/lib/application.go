@@ -1,4 +1,4 @@
-package raft
+package node
 
 import "sync"
 
@@ -17,10 +17,6 @@ type Application struct {
 	// goroutines read, write, and overwrite
 	// entries for disjoint sets of keys
 	data sync.Map
-}
-
-func (app *Application) Ping() string {
-	return "PONG"
 }
 
 func (app *Application) Get(key any) string {

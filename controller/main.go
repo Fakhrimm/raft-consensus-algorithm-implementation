@@ -1,6 +1,6 @@
 package main
 
-import controller "raft-sister/src/controller/Controller"
+import controller "Controller/lib"
 
 func main() {
 	controller := controller.NewController()
