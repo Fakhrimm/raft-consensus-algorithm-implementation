@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -19,8 +18,8 @@ type Node struct {
 	// Core components
 	Server  *grpc.Server
 	Client  comm.CommServiceClient
-	Port    int
 	Running bool
+	addr    net.TCPAddr
 
 	// Cluster components
 	ServerList  []net.TCPAddr
@@ -28,18 +27,24 @@ type Node struct {
 
 	// Raft protocol
 	State      ServerState
+	id         int
 	timeoutAvg int
 
 	// Functional components
 	Map map[string]string
 }
 
-func NewNode(port int, timeoutAvg int, serverList []net.TCPAddr) *Node {
+func NewNode(addr string, timeoutAvg int, serverList []net.TCPAddr) *Node {
 	if serverList == nil {
 		serverList = []net.TCPAddr{}
 	}
+	resolved, err := net.ResolveTCPAddr("tcp4", addr)
+	if err != nil {
+		log.Fatalf("Invalid address of %v set to node", addr)
+	}
+
 	node := &Node{
-		Port:       port,
+		addr:       *resolved,
 		ServerList: serverList,
 		Map:        make(map[string]string),
 		timeoutAvg: timeoutAvg,
@@ -47,11 +52,18 @@ func NewNode(port int, timeoutAvg int, serverList []net.TCPAddr) *Node {
 	return node
 }
 
-func (n *Node) InitServer(hostfile string) {
+func (n *Node) Init(hostfile string) {
 	log.Printf("Initializing node")
+	n.InitServer()
+	n.ReadServerList(hostfile)
+	log.Printf("Node initialization complete with address %v and id %v", n.addr.String(), n.id)
+}
+
+func (n *Node) InitServer() {
+	log.Printf("Initializing grpc server")
 
 	n.Running = true
-	lis, err := net.Listen("tcp", ":"+strconv.Itoa(n.Port))
+	lis, err := net.Listen("tcp4", n.addr.String())
 
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
@@ -61,7 +73,7 @@ func (n *Node) InitServer(hostfile string) {
 	n.Server = grpc.NewServer()
 	comm.RegisterCommServiceServer(n.Server, &s)
 
-	log.Printf("server listening at %v", lis.Addr())
+	log.Printf("server set address is %v, listening at %v", n.addr.String(), lis.Addr())
 
 	go func() {
 		if err := n.Server.Serve(lis); err != nil {
@@ -83,18 +95,24 @@ func (n *Node) ReadServerList(filename string) []net.TCPAddr {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	index := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
 			continue
 		}
-		log.Print(line)
 
 		addr, err := net.ResolveTCPAddr("tcp", line)
 		if err != nil {
 			log.Fatalf("Invalid address: %v", line)
 		}
+		if addr.String() == n.addr.String() {
+			n.id = index
+		}
+
 		serverList = append(serverList, *addr)
+		log.Print(addr)
+		index++
 	}
 
 	n.ServerList = serverList
@@ -120,7 +138,8 @@ func (n *Node) CheckSanity() {
 	key := "__CheckSanity__"
 
 	oldVal := n.Map[key]
-	n.Call("0.0.0.0:"+strconv.Itoa(n.Port), func() {
+	log.Printf("Checking own address of %v", n.addr.String())
+	n.Call(n.addr.String(), func() {
 		response_test, err_test := n.Client.Ping(context.Background(), &comm.PingRequest{})
 		if err_test != nil {
 			log.Printf("Sanity check error: %v", err_test)

@@ -6,16 +6,17 @@ function BuildProto {
 
 function StartServer {
     param (
-        [int]$Port = 60000,
+        [string]$Addr = "0.0.0.0:60000",
         [int]$Timeout = 5
     )
-    Write-Host "Starting node on port $Port"
-    Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k `"go run src/main.go -port $Port -timeout $Timeout`"" -NoNewWindow
+    Write-Host "Starting node on $Addr"
+    Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k `"go run src/main.go -addr $Addr -timeout $Timeout`"" -NoNewWindow
 }
 
 function StartServers {
     param (
         [int]$Size = 1,
+        [string]$Addr = "0.0.0.0",
         [int]$Port = 60000,
         [int]$Timeout = 5,
         [string]$Hostfile = "./config/Hostfile"
@@ -33,6 +34,13 @@ function StartServers {
     Write-Host "Starting $Size servers"
     for ($i = 0; $i -lt $Size; $i++) {
         $nPort = $Port + $i
-        StartServer -Port $nPort -Timeout $Timeout -Hostfile $Hostfile
+        $nAddr = "${Addr}:${nPort}"
+        StartServer -Addr $nAddr -Timeout $Timeout -Hostfile $Hostfile
     }   
+}
+
+function Get-WiFiIPAddress {
+    $wifiInterface = Get-NetAdapter | Where-Object {$_.InterfaceDescription -like "*Wireless*"}
+    $wifiIPAddress = Get-NetIPAddress -InterfaceIndex $wifiInterface.ifIndex | Where-Object {$_.AddressFamily -eq "IPv4"} | Select-Object -ExpandProperty IPAddress
+    return $wifiIPAddress
 }
