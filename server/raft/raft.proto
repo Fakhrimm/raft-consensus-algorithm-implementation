@@ -1,0 +1,3 @@
+service Raft {
+  // TODO: RPCs needed for the Raft protocol
+}
