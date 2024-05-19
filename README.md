@@ -18,4 +18,5 @@ An implementation of the Raft consensus algorithm.
    - Proto: sets up proto library from /proto to /controller and /node
    - WifiIP: returns the current ip address of your wifi adapter
    - Server: runs a single server on a separate cmd
-   - Servers: runs a batch of server and a controller on current terminal (**Note: Will overwrite Hostfile**)
+   - Controlelr: runs a controller on the current terminal
+   - Servers: runs a batch of server and a controller on the current terminal (**Note: Will overwrite Hostfile**)

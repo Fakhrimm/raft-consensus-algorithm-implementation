@@ -63,7 +63,7 @@ func (c *Controller) Run() {
 				continue
 			}
 			c.Call(parts[1], func() {
-				response_ping, err_ping := c.client.Ping(context.Background(), &comm.PingRequest{})
+				response_ping, err_ping := c.client.Ping(context.Background(), &comm.BasicRequest{})
 				if err_ping != nil {
 					log.Printf("ping error: %v", err_ping)
 				}
@@ -75,7 +75,7 @@ func (c *Controller) Run() {
 				continue
 			}
 			c.Call(parts[1], func() {
-				response_ping, err_ping := c.client.RequestValue(context.Background(), &comm.RequestValueRequest{Key: parts[2]})
+				response_ping, err_ping := c.client.GetValue(context.Background(), &comm.GetValueRequest{Key: parts[2]})
 				if err_ping != nil {
 					log.Printf("get error: %v", err_ping)
 				}
@@ -93,13 +93,37 @@ func (c *Controller) Run() {
 				}
 				fmt.Println(response_ping.Message)
 			})
+		case "strlen":
+			if length < 3 {
+				fmt.Println("Usage: strlen <address> <key>")
+				continue
+			}
+			c.Call(parts[1], func() {
+				response_ping, err_ping := c.client.StrlnValue(context.Background(), &comm.StrlnValueRequest{Key: parts[2]})
+				if err_ping != nil {
+					log.Printf("strlen error: %v", err_ping)
+				}
+				fmt.Println(response_ping.Value)
+			})
+		case "append":
+			if length < 4 {
+				fmt.Println("Usage: append <address> <key> <value>")
+				continue
+			}
+			c.Call(parts[1], func() {
+				response_ping, err_ping := c.client.AppendValue(context.Background(), &comm.AppendValueRequest{Key: parts[2], Value: parts[3]})
+				if err_ping != nil {
+					log.Printf("append error: %v", err_ping)
+				}
+				fmt.Println(response_ping.Message)
+			})
 		case "stop":
 			if length < 2 {
 				fmt.Println("Usage: stop <address>")
 				continue
 			}
 			c.Call(parts[1], func() {
-				_, err_ping := c.client.Stop(context.Background(), &comm.PingRequest{})
+				_, err_ping := c.client.Stop(context.Background(), &comm.BasicRequest{})
 
 				fmt.Println("Server response:", err_ping)
 			})

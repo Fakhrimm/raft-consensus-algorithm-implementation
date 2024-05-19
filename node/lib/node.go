@@ -168,7 +168,7 @@ func (n *Node) CheckSanity() {
 	oldVal := n.app.Get(key)
 	log.Printf("Checking own address of %v", n.address.String())
 	n.Call(n.address.String(), func() {
-		response_test, err_test := n.grpcClient.Ping(context.Background(), &comm.PingRequest{})
+		response_test, err_test := n.grpcClient.Ping(context.Background(), &comm.BasicRequest{})
 		if err_test != nil {
 			log.Printf("Sanity check error: %v", err_test)
 		}
@@ -180,7 +180,7 @@ func (n *Node) CheckSanity() {
 		}
 		log.Printf("Set Response: %v", response_set.Message)
 
-		response_get, err_get := n.grpcClient.RequestValue(context.Background(), &comm.RequestValueRequest{Key: key})
+		response_get, err_get := n.grpcClient.GetValue(context.Background(), &comm.GetValueRequest{Key: key})
 		if err_get != nil {
 			log.Printf("Sanity check error: %v", err_get)
 		}
