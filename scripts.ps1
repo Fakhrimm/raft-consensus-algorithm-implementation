@@ -17,7 +17,6 @@ function Proto {
 
     $destDirs = @("node/grpc", "controller/grpc")
 
-    # Copy the generated files to the destination directories
     foreach ($destDir in $destDirs) {
         if (-Not (Test-Path $destDir)) {
             New-Item -ItemType Directory -Force -Path $destDir
@@ -79,7 +78,7 @@ function Servers {
         Server -Addr $nAddr -Port $nPort -Timeout $Timeout -Hostfile $Hostfile
     }
 
-    # Controller
+    Controller
 }
 
 function Controller {
