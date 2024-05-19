@@ -14,9 +14,14 @@ import (
 )
 
 type Controller struct {
-	reader bufio.Reader
-	active bool
+	// General Attribute
+	Running bool
+
+	// Grpc purposes
 	client comm.CommServiceClient
+
+	// Application purposes
+	reader bufio.Reader
 }
 
 func NewController() *Controller {
@@ -27,11 +32,11 @@ func NewController() *Controller {
 }
 
 func (c *Controller) Run() {
-	c.active = true
+	c.Running = true
 
 	fmt.Println("Node Controller Terminal, Enter command below")
 
-	for c.active {
+	for c.Running {
 		fmt.Print("> ")
 		input, err := c.reader.ReadString('\n')
 		if err != nil {
@@ -50,7 +55,7 @@ func (c *Controller) Run() {
 		switch parts[0] {
 		case "exit":
 			fmt.Println("Exiting...")
-			c.active = false
+			c.Running = false
 			return
 		case "ping":
 			if length < 2 {

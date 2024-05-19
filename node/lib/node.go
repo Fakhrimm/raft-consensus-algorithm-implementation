@@ -48,6 +48,9 @@ type Info struct {
 }
 
 type Node struct {
+	// General attribute
+	Running bool
+
 	// Grpc purposes
 	address    net.TCPAddr
 	grpcServer *grpc.Server
@@ -58,8 +61,7 @@ type Node struct {
 	info  Info
 
 	// Application purposes
-	app     Application
-	Running bool
+	app Application
 }
 
 func NewNode(addr string) *Node {

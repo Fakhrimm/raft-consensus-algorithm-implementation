@@ -65,12 +65,12 @@ function Servers {
     }
 
     Write-Host "Generating hostfile"
-    Remove-Item -Path $Hostfile -Recurse -Force
+    Remove-Item -Path ".$Hostfile" -Recurse -Force
     
     for ($i = 0; $i -lt $Size; $i++) {
         $nPort = $Port + $i
         $address = "${Addr}:${nPort}"
-        $address | Out-File -FilePath $Hostfile -Append -Encoding ascii
+        $address | Out-File -FilePath ".$Hostfile" -Append -Encoding ascii
     }
 
     Write-Host "Starting $Size servers"
@@ -79,7 +79,7 @@ function Servers {
         Server -Addr $nAddr -Port $nPort -Timeout $Timeout -Hostfile $Hostfile
     }
 
-    Controller
+    # Controller
 }
 
 function Controller {
