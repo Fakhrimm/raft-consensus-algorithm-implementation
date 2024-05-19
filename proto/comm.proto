@@ -12,6 +12,7 @@ service CommService {
 
   // Raft
   rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResponse);
+  rpc RequestVote (RequestVoteRequest) returns (RequestVoteResponse);
 }
 
 //  Basic

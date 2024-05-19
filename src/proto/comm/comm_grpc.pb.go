@@ -24,6 +24,7 @@ const (
 	CommService_RequestValue_FullMethodName  = "/comm.CommService/RequestValue"
 	CommService_SetValue_FullMethodName      = "/comm.CommService/SetValue"
 	CommService_AppendEntries_FullMethodName = "/comm.CommService/AppendEntries"
+	CommService_RequestVote_FullMethodName   = "/comm.CommService/RequestVote"
 )
 
 // CommServiceClient is the client API for CommService service.
@@ -36,6 +37,7 @@ type CommServiceClient interface {
 	SetValue(ctx context.Context, in *SetValueRequest, opts ...grpc.CallOption) (*SetValueResponse, error)
 	// Raft
 	AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error)
+	RequestVote(ctx context.Context, in *RequestVoteRequest, opts ...grpc.CallOption) (*RequestVoteResponse, error)
 }
 
 type commServiceClient struct {
@@ -91,6 +93,15 @@ func (c *commServiceClient) AppendEntries(ctx context.Context, in *AppendEntries
 	return out, nil
 }
 
+func (c *commServiceClient) RequestVote(ctx context.Context, in *RequestVoteRequest, opts ...grpc.CallOption) (*RequestVoteResponse, error) {
+	out := new(RequestVoteResponse)
+	err := c.cc.Invoke(ctx, CommService_RequestVote_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CommServiceServer is the server API for CommService service.
 // All implementations must embed UnimplementedCommServiceServer
 // for forward compatibility
@@ -101,6 +112,7 @@ type CommServiceServer interface {
 	SetValue(context.Context, *SetValueRequest) (*SetValueResponse, error)
 	// Raft
 	AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error)
+	RequestVote(context.Context, *RequestVoteRequest) (*RequestVoteResponse, error)
 	mustEmbedUnimplementedCommServiceServer()
 }
 
@@ -122,6 +134,9 @@ func (UnimplementedCommServiceServer) SetValue(context.Context, *SetValueRequest
 }
 func (UnimplementedCommServiceServer) AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendEntries not implemented")
+}
+func (UnimplementedCommServiceServer) RequestVote(context.Context, *RequestVoteRequest) (*RequestVoteResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestVote not implemented")
 }
 func (UnimplementedCommServiceServer) mustEmbedUnimplementedCommServiceServer() {}
 
@@ -226,6 +241,24 @@ func _CommService_AppendEntries_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CommService_RequestVote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestVoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommServiceServer).RequestVote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CommService_RequestVote_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommServiceServer).RequestVote(ctx, req.(*RequestVoteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CommService_ServiceDesc is the grpc.ServiceDesc for CommService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -252,6 +285,10 @@ var CommService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AppendEntries",
 			Handler:    _CommService_AppendEntries_Handler,
+		},
+		{
+			MethodName: "RequestVote",
+			Handler:    _CommService_RequestVote_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
