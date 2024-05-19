@@ -27,13 +27,14 @@ type Node struct {
 	ServerCount int
 
 	// Raft protocol
-	State ServerState
+	State      ServerState
+	timeoutAvg int
 
 	// Functional components
 	Map map[string]string
 }
 
-func NewNode(port int, serverList []net.TCPAddr) *Node {
+func NewNode(port int, timeoutAvg int, serverList []net.TCPAddr) *Node {
 	if serverList == nil {
 		serverList = []net.TCPAddr{}
 	}
@@ -41,6 +42,7 @@ func NewNode(port int, serverList []net.TCPAddr) *Node {
 		Port:       port,
 		ServerList: serverList,
 		Map:        make(map[string]string),
+		timeoutAvg: timeoutAvg,
 	}
 	return node
 }
@@ -68,7 +70,7 @@ func (n *Node) InitServer(hostfile string) {
 	}()
 }
 
-func (n *Node) ReadServerList(filename string) {
+func (n *Node) ReadServerList(filename string) []net.TCPAddr {
 	log.Printf("Initializing server list")
 
 	var serverList []net.TCPAddr
@@ -97,6 +99,8 @@ func (n *Node) ReadServerList(filename string) {
 
 	n.ServerList = serverList
 	n.ServerCount = len(serverList)
+
+	return n.ServerList
 }
 
 func (n *Node) Call(address string, callable func()) {

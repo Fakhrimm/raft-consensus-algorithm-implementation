@@ -6,16 +6,18 @@ function BuildProto {
 
 function StartServer {
     param (
-        [int]$Port = 60000
+        [int]$Port = 60000,
+        [int]$Timeout = 5
     )
     Write-Host "Starting node on port $Port"
-    Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k `"go run src/main.go -port $Port`"" -NoNewWindow
+    Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k `"go run src/main.go -port $Port -timeout $Timeout`"" -NoNewWindow
 }
 
 function StartServers {
     param (
         [int]$Size = 1,
         [int]$Port = 60000,
+        [int]$Timeout = 5,
         [string]$Hostfile = "./config/Hostfile"
     )
 
@@ -31,6 +33,6 @@ function StartServers {
     Write-Host "Starting $Size servers"
     for ($i = 0; $i -lt $Size; $i++) {
         $nPort = $Port + $i
-        StartServer -Port $nPort -Hostfile $Hostfile
+        StartServer -Port $nPort -Timeout $Timeout -Hostfile $Hostfile
     }   
 }
