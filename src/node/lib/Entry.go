@@ -1,4 +1,4 @@
-package core
+package Node
 
 type Entry struct {
 	term  int

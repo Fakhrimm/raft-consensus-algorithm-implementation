@@ -1,4 +1,4 @@
-package core
+package Node
 
 import (
 	"bufio"
@@ -16,17 +16,17 @@ import (
 
 type Node struct {
 	// Core components
-	Server  *grpc.Server
-	Client  comm.CommServiceClient
+	server  *grpc.Server
+	client  comm.CommServiceClient
 	Running bool
 	addr    net.TCPAddr
 
 	// Cluster components
-	ServerList  []net.TCPAddr
-	ServerCount int
+	serverList  []net.TCPAddr
+	serverCount int
 
 	// Raft protocol
-	State      ServerState
+	state      ServerState
 	id         int
 	timeoutAvg int
 
@@ -45,7 +45,7 @@ func NewNode(addr string, timeoutAvg int, serverList []net.TCPAddr) *Node {
 
 	node := &Node{
 		addr:       *resolved,
-		ServerList: serverList,
+		serverList: serverList,
 		Map:        make(map[string]string),
 		timeoutAvg: timeoutAvg,
 	}
@@ -70,13 +70,13 @@ func (n *Node) InitServer() {
 	}
 
 	s := server{Node: n}
-	n.Server = grpc.NewServer()
-	comm.RegisterCommServiceServer(n.Server, &s)
+	n.server = grpc.NewServer()
+	comm.RegisterCommServiceServer(n.server, &s)
 
 	log.Printf("server set address is %v, listening at %v", n.addr.String(), lis.Addr())
 
 	go func() {
-		if err := n.Server.Serve(lis); err != nil {
+		if err := n.server.Serve(lis); err != nil {
 			log.Fatalf("failed to serve %v", err)
 		}
 	}()
@@ -115,10 +115,10 @@ func (n *Node) ReadServerList(filename string) []net.TCPAddr {
 		index++
 	}
 
-	n.ServerList = serverList
-	n.ServerCount = len(serverList)
+	n.serverList = serverList
+	n.serverCount = len(serverList)
 
-	return n.ServerList
+	return n.serverList
 }
 
 func (n *Node) Call(address string, callable func()) {
@@ -128,7 +128,7 @@ func (n *Node) Call(address string, callable func()) {
 		log.Fatalf("Failed to connect: %v", err)
 	}
 
-	n.Client = comm.NewCommServiceClient(conn)
+	n.client = comm.NewCommServiceClient(conn)
 	callable()
 
 	conn.Close()
@@ -140,19 +140,19 @@ func (n *Node) CheckSanity() {
 	oldVal := n.Map[key]
 	log.Printf("Checking own address of %v", n.addr.String())
 	n.Call(n.addr.String(), func() {
-		response_test, err_test := n.Client.Ping(context.Background(), &comm.PingRequest{})
+		response_test, err_test := n.client.Ping(context.Background(), &comm.PingRequest{})
 		if err_test != nil {
 			log.Printf("Sanity check error: %v", err_test)
 		}
 		log.Printf("Test Response: %v", response_test.Message)
 
-		response_set, err_set := n.Client.SetValue(context.Background(), &comm.SetValueRequest{Key: key, Value: "OK"})
+		response_set, err_set := n.client.SetValue(context.Background(), &comm.SetValueRequest{Key: key, Value: "OK"})
 		if err_set != nil {
 			log.Printf("Sanity check error: %v", err_set)
 		}
 		log.Printf("Set Response: %v", response_set.Message)
 
-		response_get, err_get := n.Client.RequestValue(context.Background(), &comm.RequestValueRequest{Key: key})
+		response_get, err_get := n.client.RequestValue(context.Background(), &comm.RequestValueRequest{Key: key})
 		if err_get != nil {
 			log.Printf("Sanity check error: %v", err_get)
 		}

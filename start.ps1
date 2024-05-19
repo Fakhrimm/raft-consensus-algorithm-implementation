@@ -10,7 +10,7 @@ function StartServer {
         [int]$Port = 60000,
         [int]$Timeout = 5
     )
-    if(-not $Addr) {
+    if (-not $Addr) {
         $Addr = Get-WiFiIPAddress
         if (-not $Addr) {
             $Addr = "0.0.0.0"
@@ -18,7 +18,7 @@ function StartServer {
     }
 
     Write-Host "Starting node on ${Addr}:${Port}"
-    Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k `"go run src/main.go -addr ${Addr}:${Port} -timeout $Timeout`"" -NoNewWindow
+    Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k `"go run src/node/main.go -addr ${Addr}:${Port} -timeout $Timeout`"" -NoNewWindow
 }
 
 function StartServers {
@@ -49,11 +49,18 @@ function StartServers {
     for ($i = 0; $i -lt $Size; $i++) {
         $nPort = $Port + $i
         StartServer -Addr $nAddr -Port $nPort -Timeout $Timeout -Hostfile $Hostfile
-    }   
+    }
+
+    Controller
 }
 
+function Controller {
+    go run src/controller/main.go
+}
+
+
 function Get-WiFiIPAddress {
-    $wifiIPAddress = Get-NetIPAddress | Where-Object -FilterScript {$_.InterfaceAlias -Eq "Wi-Fi" -and $_.AddressFamily -Eq "IPv4"}
+    $wifiIPAddress = Get-NetIPAddress | Where-Object -FilterScript { $_.InterfaceAlias -Eq "Wi-Fi" -and $_.AddressFamily -Eq "IPv4" }
     $ipAddress = $wifiIPAddress.IPAddress
     return $ipAddress
 }

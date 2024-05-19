@@ -1,4 +1,4 @@
-package core
+package Node
 
 type ServerState struct {
 	// Persistent

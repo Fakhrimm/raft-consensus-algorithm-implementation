@@ -2,8 +2,7 @@ package main
 
 import (
 	"flag"
-
-	"raft-sister/src/core"
+	Node "raft-sister/src/node/lib"
 )
 
 func main() {
@@ -16,7 +15,7 @@ func main() {
 	flag.StringVar(&hostfile, "hostfile", "./config/Hostfile", "The list of all servers in the cluster")
 	flag.Parse()
 
-	var node = core.NewNode(addr, timeoutAvg, nil)
+	var node = Node.NewNode(addr, timeoutAvg, nil)
 
 	node.Init(hostfile)
 	node.CheckSanity()
