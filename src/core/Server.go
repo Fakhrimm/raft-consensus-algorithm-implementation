@@ -15,6 +15,11 @@ func (s *server) Ping(ctx context.Context, in *pb.PingRequest) (*pb.PingResponse
 	return &pb.PingResponse{Code: 0, Message: "PONG"}, nil
 }
 
+func (s *server) Stop(ctx context.Context, in *pb.PingRequest) (*pb.PingResponse, error) {
+	defer s.Node.Stop()
+	return &pb.PingResponse{Code: 0, Message: "STOPPING"}, nil
+}
+
 func (s *server) RequestValue(ctx context.Context, in *pb.RequestValueRequest) (*pb.RequestValueResponse, error) {
 	return &pb.RequestValueResponse{Code: 0, Value: s.Node.Map[in.Key]}, nil
 }

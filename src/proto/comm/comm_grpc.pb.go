@@ -19,9 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	CommService_Ping_FullMethodName         = "/comm.CommService/Ping"
-	CommService_RequestValue_FullMethodName = "/comm.CommService/RequestValue"
-	CommService_SetValue_FullMethodName     = "/comm.CommService/SetValue"
+	CommService_Ping_FullMethodName          = "/comm.CommService/Ping"
+	CommService_Stop_FullMethodName          = "/comm.CommService/Stop"
+	CommService_RequestValue_FullMethodName  = "/comm.CommService/RequestValue"
+	CommService_SetValue_FullMethodName      = "/comm.CommService/SetValue"
+	CommService_AppendEntries_FullMethodName = "/comm.CommService/AppendEntries"
 )
 
 // CommServiceClient is the client API for CommService service.
@@ -29,8 +31,11 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CommServiceClient interface {
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
+	Stop(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 	RequestValue(ctx context.Context, in *RequestValueRequest, opts ...grpc.CallOption) (*RequestValueResponse, error)
 	SetValue(ctx context.Context, in *SetValueRequest, opts ...grpc.CallOption) (*SetValueResponse, error)
+	// Raft
+	AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error)
 }
 
 type commServiceClient struct {
@@ -44,6 +49,15 @@ func NewCommServiceClient(cc grpc.ClientConnInterface) CommServiceClient {
 func (c *commServiceClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
 	out := new(PingResponse)
 	err := c.cc.Invoke(ctx, CommService_Ping_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *commServiceClient) Stop(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
+	out := new(PingResponse)
+	err := c.cc.Invoke(ctx, CommService_Stop_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -68,13 +82,25 @@ func (c *commServiceClient) SetValue(ctx context.Context, in *SetValueRequest, o
 	return out, nil
 }
 
+func (c *commServiceClient) AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error) {
+	out := new(AppendEntriesResponse)
+	err := c.cc.Invoke(ctx, CommService_AppendEntries_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CommServiceServer is the server API for CommService service.
 // All implementations must embed UnimplementedCommServiceServer
 // for forward compatibility
 type CommServiceServer interface {
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
+	Stop(context.Context, *PingRequest) (*PingResponse, error)
 	RequestValue(context.Context, *RequestValueRequest) (*RequestValueResponse, error)
 	SetValue(context.Context, *SetValueRequest) (*SetValueResponse, error)
+	// Raft
+	AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error)
 	mustEmbedUnimplementedCommServiceServer()
 }
 
@@ -85,11 +111,17 @@ type UnimplementedCommServiceServer struct {
 func (UnimplementedCommServiceServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
+func (UnimplementedCommServiceServer) Stop(context.Context, *PingRequest) (*PingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
+}
 func (UnimplementedCommServiceServer) RequestValue(context.Context, *RequestValueRequest) (*RequestValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestValue not implemented")
 }
 func (UnimplementedCommServiceServer) SetValue(context.Context, *SetValueRequest) (*SetValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetValue not implemented")
+}
+func (UnimplementedCommServiceServer) AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AppendEntries not implemented")
 }
 func (UnimplementedCommServiceServer) mustEmbedUnimplementedCommServiceServer() {}
 
@@ -118,6 +150,24 @@ func _CommService_Ping_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CommServiceServer).Ping(ctx, req.(*PingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CommService_Stop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommServiceServer).Stop(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CommService_Stop_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommServiceServer).Stop(ctx, req.(*PingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -158,6 +208,24 @@ func _CommService_SetValue_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CommService_AppendEntries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AppendEntriesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommServiceServer).AppendEntries(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CommService_AppendEntries_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommServiceServer).AppendEntries(ctx, req.(*AppendEntriesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CommService_ServiceDesc is the grpc.ServiceDesc for CommService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -170,12 +238,20 @@ var CommService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _CommService_Ping_Handler,
 		},
 		{
+			MethodName: "Stop",
+			Handler:    _CommService_Stop_Handler,
+		},
+		{
 			MethodName: "RequestValue",
 			Handler:    _CommService_RequestValue_Handler,
 		},
 		{
 			MethodName: "SetValue",
 			Handler:    _CommService_SetValue_Handler,
+		},
+		{
+			MethodName: "AppendEntries",
+			Handler:    _CommService_AppendEntries_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

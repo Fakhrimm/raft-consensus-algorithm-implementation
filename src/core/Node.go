@@ -17,13 +17,17 @@ import (
 
 type Node struct {
 	// Core components
-	Server *grpc.Server
-	Client comm.CommServiceClient
-	Port   int
+	Server  *grpc.Server
+	Client  comm.CommServiceClient
+	Port    int
+	Running bool
 
 	// Cluster components
 	ServerList  []net.TCPAddr
 	ServerCount int
+
+	// Raft protocol
+	State ServerState
 
 	// Functional components
 	Map map[string]string
@@ -43,6 +47,8 @@ func NewNode(port int, serverList []net.TCPAddr) *Node {
 
 func (n *Node) InitServer(hostfile string) {
 	log.Printf("Initializing node")
+
+	n.Running = true
 	lis, err := net.Listen("tcp", ":"+strconv.Itoa(n.Port))
 
 	if err != nil {
@@ -63,6 +69,8 @@ func (n *Node) InitServer(hostfile string) {
 }
 
 func (n *Node) ReadServerList(filename string) {
+	log.Printf("Initializing server list")
+
 	var serverList []net.TCPAddr
 
 	file, err := os.Open(filename)
@@ -78,6 +86,7 @@ func (n *Node) ReadServerList(filename string) {
 		if line == "" {
 			continue
 		}
+		log.Print(line)
 
 		addr, err := net.ResolveTCPAddr("tcp", line)
 		if err != nil {
@@ -128,4 +137,8 @@ func (n *Node) CheckSanity() {
 	})
 
 	n.Map[key] = oldVal
+}
+
+func (n *Node) Stop() {
+	n.Running = false
 }

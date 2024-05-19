@@ -17,8 +17,9 @@ func main() {
 	var node = core.NewNode(port, nil)
 
 	node.InitServer(hostfile)
+	node.ReadServerList(hostfile)
 	node.CheckSanity()
 
-	for {
+	for node.Running {
 	}
 }

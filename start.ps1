@@ -20,13 +20,12 @@ function StartServers {
     )
 
     Write-Host "Generating hostfile"
-
-    "" | Out-File -FilePath $Hostfile -Force
+    Remove-Item -Path $Hostfile -Recurse -Force
     
     for ($i = 0; $i -lt $Size; $i++) {
         $nPort = $Port + $i
         $address = "0.0.0.0:$nPort"
-        $address | Out-File -FilePath $Hostfile -Append
+        $address | Out-File -FilePath $Hostfile -Append -Encoding ascii
     }
 
     Write-Host "Starting $Size servers"
