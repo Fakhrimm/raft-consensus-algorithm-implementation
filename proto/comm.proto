@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package comm;
+
+option go_package = "src/proto/comm";
+
+service CommService {
+  rpc Ping (PingRequest) returns (PingResponse);
+  rpc RequestValue (RequestValueRequest) returns (RequestValueResponse);
+  rpc SetValue (SetValueRequest) returns (SetValueResponse);
+}
+
+// 
+message PingRequest {}
+
+message PingResponse {
+  int32 code = 1;
+  string message = 2;
+}
+
+// 
+message RequestValueRequest {
+  string key = 1;
+}
+
+message RequestValueResponse {
+  int32 code = 1;
+  string value = 2;
+}
+
+// 
+message SetValueRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message SetValueResponse {
+  int32 code = 1;
+  string message = 2;
+}

@@ -12,18 +12,21 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	pb "raft-sister/src/proto/example"
+	"raft-sister/src/proto/comm"
 )
 
 type Node struct {
 	// Core components
 	Server *grpc.Server
-	Client pb.ExampleServiceClient
+	Client comm.CommServiceClient
 	Port   int
 
 	// Cluster components
 	ServerList  []net.TCPAddr
 	ServerCount int
+
+	// Functional components
+	Map map[string]string
 }
 
 func NewNode(port int, serverList []net.TCPAddr) *Node {
@@ -33,6 +36,7 @@ func NewNode(port int, serverList []net.TCPAddr) *Node {
 	node := &Node{
 		Port:       port,
 		ServerList: serverList,
+		Map:        make(map[string]string),
 	}
 	return node
 }
@@ -47,7 +51,7 @@ func (n *Node) InitServer(hostfile string) {
 
 	s := server{Node: n}
 	n.Server = grpc.NewServer()
-	pb.RegisterExampleServiceServer(n.Server, &s)
+	comm.RegisterCommServiceServer(n.Server, &s)
 
 	log.Printf("server listening at %v", lis.Addr())
 
@@ -93,18 +97,35 @@ func (n *Node) Call(address string, callable func()) {
 		log.Fatalf("Failed to connect: %v", err)
 	}
 
-	n.Client = pb.NewExampleServiceClient(conn)
+	n.Client = comm.NewCommServiceClient(conn)
 	callable()
 
 	conn.Close()
 }
 
-func (n *Node) SanityCheck() {
+func (n *Node) CheckSanity() {
+	key := "__CheckSanity__"
+
+	oldVal := n.Map[key]
 	n.Call("0.0.0.0:"+strconv.Itoa(n.Port), func() {
-		response, err := n.Client.SayHello(context.Background(), &pb.HelloRequest{Name: strconv.Itoa(n.Port)})
-		if err != nil {
-			log.Printf("Sanity check error: %v", err)
+		response_test, err_test := n.Client.Ping(context.Background(), &comm.PingRequest{})
+		if err_test != nil {
+			log.Printf("Sanity check error: %v", err_test)
 		}
-		log.Printf("Response: %v", response.GetMessage())
+		log.Printf("Test Response: %v", response_test.Message)
+
+		response_set, err_set := n.Client.SetValue(context.Background(), &comm.SetValueRequest{Key: key, Value: "OK"})
+		if err_set != nil {
+			log.Printf("Sanity check error: %v", err_set)
+		}
+		log.Printf("Set Response: %v", response_set.Message)
+
+		response_get, err_get := n.Client.RequestValue(context.Background(), &comm.RequestValueRequest{Key: key})
+		if err_get != nil {
+			log.Printf("Sanity check error: %v", err_get)
+		}
+		log.Printf("Get Response: %v", response_get.Value)
 	})
+
+	n.Map[key] = oldVal
 }

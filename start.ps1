@@ -1,6 +1,7 @@
 function BuildProto {
     Write-Host "Compiling from gRPC proto files"
-    protoc --go_out=. --go-grpc_out=. proto/example.proto
+    Remove-Item -Path "src/proto/*" -Recurse -Force
+    protoc --go_out=. --go-grpc_out=. proto/comm.proto
 }
 
 function StartServer {
