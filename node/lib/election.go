@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -50,11 +51,18 @@ func (node *Node) ElectionTimerHandler() {
 }
 
 func (node *Node) startElection() {
+	interval := time.Duration(node.info.timeoutAvgTime) * time.Second / 100 / 3
+
 	node.info.currentTerm++
 	node.state = Candidate
 	vote := 1
 
 	log.Printf("[Election] Starting election for cluster size of %v", node.info.clusterCount)
+
+	// Create channels
+	var waitGroup sync.WaitGroup
+	voteCh := make(chan bool, node.info.clusterCount)
+
 	for _, peer := range node.info.clusterAddresses {
 		if peer.String() == node.address.String() {
 			continue
@@ -63,34 +71,52 @@ func (node *Node) startElection() {
 		log.Printf("[Election] node is : %v", node.address.String())
 		log.Printf("[Election] Asking for vote from node: %v", peer)
 
-		// TODO: Implement
-		node.Call(peer.String(), func() {
+		waitGroup.Add(1)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*interval)
 
-			// TODO: review, last log index committed or uncommited? not sure
-			lastLogTerm := 0
-			if len(node.info.log) > 0 {
-				lastLogTerm = node.info.log[node.info.commitIndex].term
-			}
-			response, err := node.grpcClient.RequestVote(context.Background(), &comm.RequestVoteRequest{
-				Term:         int32(node.info.currentTerm),
-				CandidateId:  int32(node.info.id),
-				LastLogIndex: int32(node.info.commitIndex),
-				LastLogTerm:  int32(lastLogTerm),
+		// TODO: Implement vote request here
+		go func(peerAddr string) {
+			defer cancel()
+			defer waitGroup.Done()
+
+			node.Call(peer.String(), func() {
+
+				// TODO: review, last log index committed or uncommited? not sure
+				lastLogTerm := 0
+				if len(node.info.log) > 0 {
+					lastLogTerm = node.info.log[node.info.commitIndex].term
+				}
+				response, err := node.grpcClient.RequestVote(ctx, &comm.RequestVoteRequest{
+					Term:         int32(node.info.currentTerm),
+					CandidateId:  int32(node.info.id),
+					LastLogIndex: int32(node.info.commitIndex),
+					LastLogTerm:  int32(lastLogTerm),
+				})
+
+				voteCh <- false
+				if err != nil {
+					log.Printf("[Election] Error reaching node %v: %v", peer.String(), err)
+				} else if response.VoteGranted {
+					log.Printf("[Election] Received vote from node %v", peer.String())
+					voteCh <- true
+				}
 			})
+		}(peer.String())
+	}
 
-			if err != nil {
-				log.Printf("[Election] Error reaching node %v: %v", peer.String(), err)
-			} else if response.VoteGranted {
-				log.Printf("[Election] Received vote from node %v, current vote is %v/%v", peer.String(), vote, node.info.clusterCount)
-				vote += 1
-			}
-		})
+	// Create barrier, reduce votes
+	go func() {
+		waitGroup.Wait()
+		close(voteCh)
+	}()
 
-		if vote > node.info.clusterCount/2 {
-			log.Printf("[Election] Enough vote received")
-			break
+	for granted := range voteCh {
+		if granted {
+			vote += 1
+			log.Printf("[Election] Counting votes %v/%v", vote, node.info.clusterCount)
 		}
 	}
+	log.Printf("[Election] Counting completed with %v/%v", vote, node.info.clusterCount)
 
 	if vote > node.info.clusterCount/2 {
 		log.Printf("[Election] Node is now a leader for term %v", node.info.currentTerm)
@@ -113,12 +139,21 @@ func (node *Node) initHeartbeat() {
 				if peer.String() == node.address.String() {
 					continue
 				}
-				log.Printf("Sending heartbeat to node: %v", peer)
+				log.Printf("[Heartbeat] Sending heartbeat to node: %v", peer)
 
-				// TODO: Implement
-				node.Call(peer.String(), func() {
-					node.grpcClient.Heartbeat(context.Background(), &comm.HeartbeatRequest{})
-				})
+				ctx, cancel := context.WithTimeout(context.Background(), 2*interval)
+
+				go func(peerAddr string) {
+					defer cancel()
+
+					// TODO: Implement heartbeat functions
+					node.Call(peer.String(), func() {
+						_, err := node.grpcClient.Heartbeat(ctx, &comm.HeartbeatRequest{})
+						if err != nil {
+							log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
+						}
+					})
+				}(peer.String())
 			}
 		}
 	}
@@ -127,6 +162,6 @@ func (node *Node) initHeartbeat() {
 func (node *Node) onHeartBeat(info *comm.HeartbeatRequest) {
 	// TODO: Handle if a candidate node receives a heartbeat
 	// TODO: Implement
-	log.Printf("Received heartbeat from: %v", info.LeaderId)
+	log.Printf("[Heartbeat] Received heartbeat from: %v", info.LeaderId)
 	node.electionResetSignal <- true
 }
