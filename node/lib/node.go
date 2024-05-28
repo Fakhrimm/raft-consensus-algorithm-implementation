@@ -31,8 +31,8 @@ type Info struct {
 	votedFor            int
 	log                 []comm.Entry
 	clusterAddresses    []net.TCPAddr
-	clusterCount        int
 	newClusterAddresses []net.TCPAddr
+	clusterCount        int
 	newClusterCount     int
 	isJoinConsensus     bool
 	timeoutAvgTime      int
