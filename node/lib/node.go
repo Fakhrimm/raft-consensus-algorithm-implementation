@@ -224,13 +224,31 @@ func (node *Node) CommitLogEntries(newCommitIndex int) {
 		case int32(Delete):
 			node.app.Del(entry.Key)
 		case int32(NewConfig):
-			//TODO: Implement
-		case int32(NewOldConfig):
-			newEntry := comm.Entry{
-				Term:    int32(node.info.currentTerm),
-				Command: int32(NewConfig),
+			if node.state == Leader {
+				contained := false
+				for _, addr := range node.info.newClusterAddresses {
+					if addr.String() == node.address.String() {
+						contained = true
+						break
+					}
+				}
+				if contained {
+					node.info.clusterAddresses = node.info.newClusterAddresses
+					node.info.clusterCount = node.info.newClusterCount
+					node.info.isJointConsensus = false
+				} else {
+					log.Printf("[CommitLogEntries] Node %v is not in new cluster but its a leader, precedes to kill itsel", node.address.String())
+					node.Stop()
+				}
 			}
-			node.appendToLog(newEntry)
+		case int32(NewOldConfig):
+			if node.state == Leader {
+				newEntry := comm.Entry{
+					Term:    int32(node.info.currentTerm),
+					Command: int32(NewConfig),
+				}
+				node.appendToLog(newEntry)
+			}
 		}
 	}
 	node.info.commitIndex = newCommitIndex
