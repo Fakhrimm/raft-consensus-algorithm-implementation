@@ -146,6 +146,8 @@ func (node *Node) initHeartbeat() {
 
 	for node.state == Leader {
 		for range ticker.C {
+			var waitGroup sync.WaitGroup
+			heartbeatCh := make(chan bool, node.info.clusterCount)
 			for index, peer := range node.info.clusterAddresses {
 				if peer.String() == node.address.String() {
 					continue
@@ -183,16 +185,18 @@ func (node *Node) initHeartbeat() {
 				// log.Printf("[Heartbeat] data to send: %v", data)
 				// log.Printf("[Heartbeat] data to send: %v", data)
 
+				waitGroup.Add(1)
 				ctx, cancel := context.WithTimeout(context.Background(), 2*interval)
 
 				// TODO: Count failed heartbeats to indicate majority down
 				go func(peerAddr string) {
 					defer cancel()
+					defer waitGroup.Done()
 
 					// TODO: Implement append entries functions
 					node.Call(peer.String(), func() {
 						response, err := node.grpcClient.AppendEntries(ctx, data)
-
+						heartbeatCh <- true
 						if err != nil {
 							log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
 						} else {
@@ -206,31 +210,46 @@ func (node *Node) initHeartbeat() {
 					})
 				}(peer.String())
 			}
-		}
+			go func() {
+				waitGroup.Wait()
+				close(heartbeatCh)
+			}()
 
-		matchIndex := make(map[int]int)
-		for _, index := range node.info.matchIndex {
-			if matchIndex[index] == 0 {
-				matchIndex[index] = 1
-			} else {
-				matchIndex[index]++
+			aliveNodeCount := 1
+			for getResponse := range heartbeatCh {
+				if getResponse {
+					aliveNodeCount += 1
+				}
 			}
-		}
 
-		// sort matchIndex descending by the key
-		keys := make([]int, 0, len(matchIndex))
-		for k := range matchIndex {
-			keys = append(keys, k)
-		}
-		sort.Sort(sort.Reverse(sort.IntSlice(keys)))
+			if 2*aliveNodeCount <= node.info.clusterCount {
+				// TODO: implement if mayority of server is not alive
+			} else {
+				matchIndex := make(map[int]int)
+				for _, index := range node.info.matchIndex {
+					if matchIndex[index] == 0 {
+						matchIndex[index] = 1
+					} else {
+						matchIndex[index]++
+					}
+				}
 
-		majority := node.info.clusterCount / 2
-		sum := 0
-		for _, key := range keys {
-			sum += matchIndex[key]
-			if sum > majority {
-				node.CommitLogEntries(key)
-				break
+				// sort matchIndex descending by the key
+				keys := make([]int, 0, len(matchIndex))
+				for k := range matchIndex {
+					keys = append(keys, k)
+				}
+				sort.Sort(sort.Reverse(sort.IntSlice(keys)))
+
+				majority := node.info.clusterCount / 2
+				sum := 0
+				for _, key := range keys {
+					sum += matchIndex[key]
+					if sum > majority {
+						node.CommitLogEntries(key)
+						break
+					}
+				}
 			}
 		}
 	}
