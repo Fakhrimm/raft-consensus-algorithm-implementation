@@ -29,6 +29,7 @@ type CommServiceClient interface {
 	StrlnValue(ctx context.Context, in *StrlnValueRequest, opts ...grpc.CallOption) (*StrlnValueResponse, error)
 	DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*DeleteValueResponse, error)
 	AppendValue(ctx context.Context, in *AppendValueRequest, opts ...grpc.CallOption) (*AppendValueResponse, error)
+	ChangeMembership(ctx context.Context, in *ChangeMembershipRequest, opts ...grpc.CallOption) (*ChangeMembershipRequest, error)
 	// Raft
 	AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error)
 	RequestVote(ctx context.Context, in *RequestVoteRequest, opts ...grpc.CallOption) (*RequestVoteResponse, error)
@@ -105,6 +106,15 @@ func (c *commServiceClient) AppendValue(ctx context.Context, in *AppendValueRequ
 	return out, nil
 }
 
+func (c *commServiceClient) ChangeMembership(ctx context.Context, in *ChangeMembershipRequest, opts ...grpc.CallOption) (*ChangeMembershipRequest, error) {
+	out := new(ChangeMembershipRequest)
+	err := c.cc.Invoke(ctx, "/comm.CommService/ChangeMembership", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *commServiceClient) AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error) {
 	out := new(AppendEntriesResponse)
 	err := c.cc.Invoke(ctx, "/comm.CommService/AppendEntries", in, out, opts...)
@@ -134,6 +144,7 @@ type CommServiceServer interface {
 	StrlnValue(context.Context, *StrlnValueRequest) (*StrlnValueResponse, error)
 	DeleteValue(context.Context, *DeleteValueRequest) (*DeleteValueResponse, error)
 	AppendValue(context.Context, *AppendValueRequest) (*AppendValueResponse, error)
+	ChangeMembership(context.Context, *ChangeMembershipRequest) (*ChangeMembershipRequest, error)
 	// Raft
 	AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error)
 	RequestVote(context.Context, *RequestVoteRequest) (*RequestVoteResponse, error)
@@ -164,6 +175,9 @@ func (UnimplementedCommServiceServer) DeleteValue(context.Context, *DeleteValueR
 }
 func (UnimplementedCommServiceServer) AppendValue(context.Context, *AppendValueRequest) (*AppendValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendValue not implemented")
+}
+func (UnimplementedCommServiceServer) ChangeMembership(context.Context, *ChangeMembershipRequest) (*ChangeMembershipRequest, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ChangeMembership not implemented")
 }
 func (UnimplementedCommServiceServer) AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendEntries not implemented")
@@ -310,6 +324,24 @@ func _CommService_AppendValue_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CommService_ChangeMembership_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeMembershipRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommServiceServer).ChangeMembership(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/comm.CommService/ChangeMembership",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommServiceServer).ChangeMembership(ctx, req.(*ChangeMembershipRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _CommService_AppendEntries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AppendEntriesRequest)
 	if err := dec(in); err != nil {
@@ -380,6 +412,10 @@ var CommService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AppendValue",
 			Handler:    _CommService_AppendValue_Handler,
+		},
+		{
+			MethodName: "ChangeMembership",
+			Handler:    _CommService_ChangeMembership_Handler,
 		},
 		{
 			MethodName: "AppendEntries",

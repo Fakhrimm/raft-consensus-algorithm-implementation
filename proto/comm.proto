@@ -12,6 +12,7 @@ service CommService {
   rpc StrlnValue (StrlnValueRequest) returns (StrlnValueResponse);
   rpc DeleteValue (DeleteValueRequest) returns (DeleteValueResponse);
   rpc AppendValue (AppendValueRequest) returns (AppendValueResponse);
+  rpc ChangeMembership (ChangeMembershipRequest) returns (ChangeMembershipRequest);
 
   // Raft
   rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResponse);
@@ -101,4 +102,15 @@ message RequestVoteRequest {
 message RequestVoteResponse {
   int32 term = 1;
   bool voteGranted = 2;
+}
+
+message ChangeMembershipRequest {
+  string clusterAddresses = 1;
+  string newClusterAddresses = 2;
+}
+
+message ChangeMembershipResponse {
+  int32 code = 1;
+  string message = 2;
+  string value = 3;
 }
