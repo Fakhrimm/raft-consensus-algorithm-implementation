@@ -31,8 +31,8 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 }
 
 func (s *server) StrlnValue(ctx context.Context, in *comm.StrlnValueRequest) (*comm.StrlnValueResponse, error) {
-	len := s.Node.app.Strln(in.Key)
-	return &comm.StrlnValueResponse{Code: 0, Message: "Length fetched", Value: int32(len)}, nil
+	length := s.Node.app.Strln(in.Key)
+	return &comm.StrlnValueResponse{Code: 0, Message: "Length fetched", Value: int32(length)}, nil
 }
 
 func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (*comm.DeleteValueResponse, error) {
