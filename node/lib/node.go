@@ -203,6 +203,18 @@ func (node *Node) CheckSanity() {
 	node.app.Set(key, oldVal)
 }
 
+func (node *Node) CommitLogEntries(newCommitIndex int) {
+	for i := node.info.commitIndex + 1; i <= newCommitIndex; i++ {
+		entry := node.info.log[i]
+		if entry.key == "" {
+			node.app.Del(entry.key)
+		} else {
+			node.app.Set(entry.key, entry.value)
+		}
+	}
+	node.info.commitIndex = newCommitIndex
+}
+
 func (node *Node) Stop() {
 	node.Running = false
 }

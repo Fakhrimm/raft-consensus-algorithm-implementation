@@ -61,16 +61,14 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 		return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
 	}
 
-	// Reply false if log entry term at prevLogIndex does not match prevLogTerm (§5.3)
-	if s.Node.info.log[in.PrevLogIndex].term != int(in.PrevLogTerm) {
-		return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
+	if in.PrevLogIndex >= 0 {
+		// Reply false if log entry term at prevLogIndex does not match prevLogTerm (§5.3)
+		if s.Node.info.log[in.PrevLogIndex].term != int(in.PrevLogTerm) {
+			return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
+		}
 	}
 
-	// If an existing entry conflicts with a new one (same index but different terms)
-	if s.Node.info.log[in.PrevLogIndex+1].term != int(in.Entries[0].Term) {
-		// delete the existing entry and all that follow it
-		s.Node.info.log = s.Node.info.log[:in.PrevLogIndex+1]
-	}
+	s.Node.info.log = s.Node.info.log[:in.PrevLogIndex+1]
 
 	for _, entry := range in.Entries {
 		newLog := LogEntry{
@@ -84,7 +82,8 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 	// If leaderCommit > commitIndex, set commitIndex =
 	// min(leaderCommit, index of last new entry)
 	if in.LeaderCommit > int32(s.Node.info.commitIndex) {
-		s.Node.info.commitIndex = min(int(in.LeaderCommit), len(s.Node.info.log)-1)
+		newCommitIndex := min(int(in.LeaderCommit), len(s.Node.info.log)-1)
+		s.Node.CommitLogEntries(newCommitIndex)
 	}
 
 	return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: true}, nil
