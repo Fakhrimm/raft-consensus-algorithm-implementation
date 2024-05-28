@@ -34,7 +34,7 @@ type Info struct {
 	newClusterAddresses []net.TCPAddr
 	clusterCount        int
 	newClusterCount     int
-	isJoinConsensus     bool
+	isJointConsensus    bool
 	timeoutAvgTime      int
 
 	// Volatile
@@ -81,14 +81,14 @@ func NewNode(addr string) *Node {
 	return node
 }
 
-func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, isJoin bool) {
+func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, isJointConsensus bool) {
 	log.Printf("Initializing node")
 	node.InitServer()
 
 	node.info.clusterAddresses, node.info.clusterCount = node.ReadServerList(hostfile)
 	log.Printf("Check: %v", node.info.clusterAddresses)
 	node.info.newClusterAddresses, node.info.newClusterCount = node.ReadServerList(newHostfile)
-	node.info.isJoinConsensus = isJoin
+	node.info.isJointConsensus = isJointConsensus
 
 	node.info.timeoutAvgTime = timeoutAvgTime
 

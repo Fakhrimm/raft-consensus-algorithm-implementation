@@ -45,7 +45,7 @@ function Server {
         [string]$Addr,
         [int]$Port = 60000,
         [int]$Timeout = 200,
-        [boolean]$IsJoin = false,
+        [boolean]$IsJointConsensus = false,
         [string]$Hostfile = "/config/Hostfile"
         [string]$HostfileNew = ""
     )
@@ -58,7 +58,7 @@ function Server {
     Write-Host "Starting node on ${Addr}:${Port}"
     
     Push-Location -Path "node"
-    Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k `"go run main.go -addr ${Addr}:${Port} -hostfile $Hostfile -hostfilenew $HostfileNew -isjoin $IsJoin -timeout $Timeout`"" -NoNewWindow
+    Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k `"go run main.go -addr ${Addr}:${Port} -hostfile $Hostfile -hostfilenew $HostfileNew -isjointconsensus $IsJointConsensus -timeout $Timeout`"" -NoNewWindow
     Pop-Location
 }
 
