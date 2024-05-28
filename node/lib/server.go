@@ -55,15 +55,25 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 	// TODO: Synchronize before sending ok
 	code, message = s.ValidateRequest()
 	if code == 200 {
-		message = "Value set request received"
+		message = "Value set request completed"
 
 		s.Node.info.log = append(s.Node.info.log, comm.Entry{
-			Term:  int32(s.Node.info.currentTerm),
-			Key:   in.Key,
-			Value: in.Value,
+			Term:    int32(s.Node.info.currentTerm),
+			Key:     in.Key,
+			Value:   in.Value,
+			Command: int32(Set),
 		})
 
 		transactionIndex := len(s.Node.info.log) - 1
+		s.Node.info.matchIndex[s.Node.info.id] = len(s.Node.info.log) - 1
+
+		for index, nextIndex := range s.Node.info.nextIndex {
+			if nextIndex == s.Node.info.matchIndex[index] {
+				s.Node.info.nextIndex[index]++
+			}
+		}
+		log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
+		log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
 
 		for transactionIndex != s.Node.info.commitIndex {
 		}
@@ -98,10 +108,31 @@ func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (
 	// TODO: Synchronize before sending ok
 	code, message = s.ValidateRequest()
 	if code == 200 {
-		message = "Key deleted successfully"
-		value = s.Node.app.Del(in.Key)
+		message = "Value delete request completed"
+
+		s.Node.info.log = append(s.Node.info.log, comm.Entry{
+			Term:    int32(s.Node.info.currentTerm),
+			Key:     in.Key,
+			Value:   "",
+			Command: int32(Delete),
+		})
+
+		transactionIndex := len(s.Node.info.log) - 1
+		s.Node.info.matchIndex[s.Node.info.id] = len(s.Node.info.log) - 1
+
+		for index, nextIndex := range s.Node.info.nextIndex {
+			if nextIndex == s.Node.info.matchIndex[index] {
+				s.Node.info.nextIndex[index]++
+			}
+		}
+		log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
+		log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
+
+		for transactionIndex != s.Node.info.commitIndex {
+		}
 	}
 
+	log.Printf("[Transaction] Delete request is completed")
 	return &comm.DeleteValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
@@ -114,10 +145,31 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 	// TODO: Synchronize before sending ok
 	code, message = s.ValidateRequest()
 	if code == 200 {
-		message = "Key appended successfully"
-		value = s.Node.app.Append(in.Key, in.Value)
+		message = "Value append request completed"
+
+		s.Node.info.log = append(s.Node.info.log, comm.Entry{
+			Term:    int32(s.Node.info.currentTerm),
+			Key:     in.Key,
+			Value:   in.Value,
+			Command: int32(Append),
+		})
+
+		transactionIndex := len(s.Node.info.log) - 1
+		s.Node.info.matchIndex[s.Node.info.id] = len(s.Node.info.log) - 1
+
+		for index, nextIndex := range s.Node.info.nextIndex {
+			if nextIndex == s.Node.info.matchIndex[index] {
+				s.Node.info.nextIndex[index]++
+			}
+		}
+		log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
+		log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
+
+		for transactionIndex != s.Node.info.commitIndex {
+		}
 	}
 
+	log.Printf("[Transaction] Append request is completed")
 	return &comm.AppendValueResponse{Code: code, Message: message, Value: value}, nil
 }
 

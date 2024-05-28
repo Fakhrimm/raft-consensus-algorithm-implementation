@@ -142,7 +142,8 @@ func (node *Node) ReadServerList(filename string) ([]net.TCPAddr, int) {
 	file, err := os.Open(filename)
 
 	if err != nil {
-		log.Fatalf("Failed to load hostfile: %v", err)
+		log.Printf("Failed to load hostfile: %v", err)
+		return serverList, 0
 	}
 	defer file.Close()
 
@@ -214,10 +215,18 @@ func (node *Node) CheckSanity() {
 func (node *Node) CommitLogEntries(newCommitIndex int) {
 	for i := node.info.commitIndex + 1; i <= newCommitIndex; i++ {
 		entry := node.info.log[i]
-		if entry.Key == "" {
-			node.app.Del(entry.Key)
-		} else {
+
+		switch entry.Command {
+		case int32(Set):
 			node.app.Set(entry.Key, entry.Value)
+		case int32(Append):
+			node.app.Append(entry.Key, entry.Value)
+		case int32(Delete):
+			node.app.Del(entry.Key)
+		case int32(NewConfig):
+			//TODO: Implement
+		case int32(NewOldConfig):
+			//TODO: Implement
 		}
 	}
 	node.info.commitIndex = newCommitIndex
