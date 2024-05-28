@@ -78,6 +78,7 @@ message Entry {
   int32 term = 1;
   string key = 2;
   string value = 3;
+  bool isConfigEntry = 4;
 }
 
 message AppendEntriesRequest {
