@@ -54,82 +54,94 @@ func (c *Controller) Run() {
 
 		switch parts[0] {
 		case "exit":
-			fmt.Println("Exiting...")
+			log.Println("Exiting...")
 			c.Running = false
 			return
 		case "ping":
 			if length < 2 {
-				fmt.Println("Usage: ping <address>")
+				log.Println("Usage: ping <address>")
 				continue
 			}
 			c.Call(parts[1], func() {
-			response_ping, err_ping := c.client.Ping(context.Background(), &comm.BasicRequest{})
-				if err_ping != nil {
-					log.Printf("ping error: %v", err_ping)
+				response, err := c.client.Ping(context.Background(), &comm.BasicRequest{})
+				if err != nil {
+					log.Printf("ping error: %v", err)
 				}
-				fmt.Println(response_ping.Message)
+				log.Printf("Response: {%v}", response)
 			})
 		case "get":
 			if length < 3 {
-				fmt.Println("Usage: get <address> <key>")
+				log.Println("Usage: get <address> <key>")
 				continue
 			}
 			c.Call(parts[1], func() {
-				response_ping, err_ping := c.client.GetValue(context.Background(), &comm.GetValueRequest{Key: parts[2]})
-				if err_ping != nil {
-					log.Printf("get error: %v", err_ping)
+				response, err := c.client.GetValue(context.Background(), &comm.GetValueRequest{Key: parts[2]})
+				if err != nil {
+					log.Printf("get error: %v", err)
 				}
-				fmt.Println(response_ping.Value)
+				log.Printf("Response: {%v}", response)
 			})
 		case "set":
 			if length < 4 {
-				fmt.Println("Usage: get <address> <key> <value>")
+				log.Println("Usage: get <address> <key> <value>")
 				continue
 			}
 			c.Call(parts[1], func() {
-				response_ping, err_ping := c.client.SetValue(context.Background(), &comm.SetValueRequest{Key: parts[2], Value: parts[3]})
-				if err_ping != nil {
-					log.Printf("set error: %v", err_ping)
+				response, err := c.client.SetValue(context.Background(), &comm.SetValueRequest{Key: parts[2], Value: parts[3]})
+				if err != nil {
+					log.Printf("set error: %v", err)
 				}
-				fmt.Println(response_ping.Message)
+				log.Printf("Response: {%v}", response)
 			})
 		case "strlen":
 			if length < 3 {
-				fmt.Println("Usage: strlen <address> <key>")
+				log.Println("Usage: strlen <address> <key>")
 				continue
 			}
 			c.Call(parts[1], func() {
-				response_ping, err_ping := c.client.StrlnValue(context.Background(), &comm.StrlnValueRequest{Key: parts[2]})
-				if err_ping != nil {
-					log.Printf("strlen error: %v", err_ping)
+				response, err := c.client.StrlnValue(context.Background(), &comm.StrlnValueRequest{Key: parts[2]})
+				if err != nil {
+					log.Printf("strlen error: %v", err)
 				}
-				fmt.Println(response_ping.Value)
+				log.Printf("Response: {%v}", response)
+			})
+		case "delete":
+			if length < 3 {
+				log.Println("Usage: strlen <address> <key>")
+				continue
+			}
+			c.Call(parts[1], func() {
+				response, err := c.client.DeleteValue(context.Background(), &comm.DeleteValueRequest{Key: parts[2]})
+				if err != nil {
+					log.Printf("delete error: %v", err)
+				}
+				log.Printf("Response: {%v}", response)
 			})
 		case "append":
 			if length < 4 {
-				fmt.Println("Usage: append <address> <key> <value>")
+				log.Println("Usage: append <address> <key> <value>")
 				continue
 			}
 			c.Call(parts[1], func() {
-				response_ping, err_ping := c.client.AppendValue(context.Background(), &comm.AppendValueRequest{Key: parts[2], Value: parts[3]})
-				if err_ping != nil {
-					log.Printf("append error: %v", err_ping)
+				response, err := c.client.AppendValue(context.Background(), &comm.AppendValueRequest{Key: parts[2], Value: parts[3]})
+				if err != nil {
+					log.Printf("append error: %v", err)
 				}
-				fmt.Println(response_ping.Message)
+				log.Printf("Response: {%v}", response)
 			})
 		case "stop":
 			if length < 2 {
-				fmt.Println("Usage: stop <address>")
+				log.Println("Usage: stop <address>")
 				continue
 			}
 			c.Call(parts[1], func() {
-				_, err_ping := c.client.Stop(context.Background(), &comm.BasicRequest{})
+				_, err := c.client.Stop(context.Background(), &comm.BasicRequest{})
 
-				fmt.Println("Server response:", err_ping)
+				log.Println("Server response:", err)
 			})
 
 		default:
-			fmt.Println("Unknown Command: ", parts[0])
+			log.Println("Unknown Command: ", parts[0])
 		}
 	}
 }

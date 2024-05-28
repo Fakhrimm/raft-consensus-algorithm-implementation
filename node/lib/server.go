@@ -13,36 +13,106 @@ type server struct {
 
 // Application purposes
 func (s *server) Ping(ctx context.Context, in *comm.BasicRequest) (*comm.BasicResponse, error) {
-	return &comm.BasicResponse{Code: 0, Message: "PONG"}, nil
+	return &comm.BasicResponse{Code: 200, Message: "PONG"}, nil
 }
 
 func (s *server) Stop(ctx context.Context, in *comm.BasicRequest) (*comm.BasicResponse, error) {
 	defer s.Node.Stop()
-	return &comm.BasicResponse{Code: 0, Message: "STOPPING"}, nil
+	return &comm.BasicResponse{Code: 200, Message: "STOPPING"}, nil
 }
 
 func (s *server) GetValue(ctx context.Context, in *comm.GetValueRequest) (*comm.GetValueResponse, error) {
-	return &comm.GetValueResponse{Code: 0, Value: s.Node.app.Get(in.Key)}, nil
+	var code int32
+	var message string
+	var value string
+
+	// TODO: Give feedback when value is not set
+	if s.Node.state == Leader {
+		code = 200
+		message = "Value fetched successfully"
+		value = s.Node.app.Get(in.Key)
+	} else {
+		code = 501
+		message = s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
+	}
+
+	return &comm.GetValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
 func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.SetValueResponse, error) {
-	s.Node.app.Set(in.Key, in.Value)
-	return &comm.SetValueResponse{Code: 0, Message: "Value changed sucessfully"}, nil
+	var code int32
+	var message string
+	var value string
+
+	// TODO: Synchronize before sending ok value
+	if s.Node.state == Leader {
+		s.Node.app.Set(in.Key, in.Value)
+
+		code = 200
+		message = "Value set successfully"
+		value = s.Node.app.Get(in.Key)
+	} else {
+		code = 501
+		message = s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
+	}
+
+	return &comm.SetValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
 func (s *server) StrlnValue(ctx context.Context, in *comm.StrlnValueRequest) (*comm.StrlnValueResponse, error) {
-	length := s.Node.app.Strln(in.Key)
-	return &comm.StrlnValueResponse{Code: 0, Message: "Length fetched", Value: int32(length)}, nil
+	var code int32
+	var message string
+	var value int32
+
+	// TODO: Synchronize before sending ok value
+	if s.Node.state == Leader {
+		length := int32(s.Node.app.Strln(in.Key))
+
+		code = 200
+		message = "Strlen fetched successfully"
+		value = length
+	} else {
+		code = 501
+		message = s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
+	}
+
+	return &comm.StrlnValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
 func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (*comm.DeleteValueResponse, error) {
-	value := s.Node.app.Del(in.Key)
-	return &comm.DeleteValueResponse{Code: 0, Message: "Value Deleted", Value: value}, nil
+	var code int32
+	var message string
+	var value string
+
+	// TODO: Synchronize before sending ok value
+	if s.Node.state == Leader {
+		code = 200
+		message = "Key deleted successfully"
+		value = s.Node.app.Del(in.Key)
+	} else {
+		code = 501
+		message = s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
+	}
+
+	return &comm.DeleteValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
 func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (*comm.AppendValueResponse, error) {
-	s.Node.app.Append(in.Key, in.Value)
-	return &comm.AppendValueResponse{Code: 0, Message: "Value appended sucessfully"}, nil
+	var code int32
+	var message string
+	var value string
+
+	// TODO: Synchronize before sending ok value
+	if s.Node.state == Leader {
+		code = 200
+		message = "Key appended successfully"
+		value = s.Node.app.Append(in.Key, in.Value)
+	} else {
+		code = 501
+		message = s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
+	}
+
+	return &comm.AppendValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
 // Raft purposes

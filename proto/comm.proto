@@ -30,7 +30,8 @@ message GetValueRequest {
 }
 message GetValueResponse {
   int32 code = 1;
-  string value = 2;
+  string message = 2;
+  string value = 3;
 }
 
 message SetValueRequest {
@@ -40,6 +41,7 @@ message SetValueRequest {
 message SetValueResponse {
   int32 code = 1;
   string message = 2;
+  string value = 3;
 }
 
 message StrlnValueRequest {
@@ -47,8 +49,8 @@ message StrlnValueRequest {
 }
 message StrlnValueResponse {
   int32 code = 1;
-  int32 value = 2;
-  string message = 3;
+  string message = 2;
+  int32 value = 3;
 }
 
 message DeleteValueRequest {
@@ -56,8 +58,8 @@ message DeleteValueRequest {
 }
 message DeleteValueResponse {
   int32 code = 1;
-  string value = 2;
-  string message = 3;
+  string message = 2;
+  string value = 3;
 }
 
 message AppendValueRequest {
@@ -67,6 +69,7 @@ message AppendValueRequest {
 message AppendValueResponse {
   int32 code = 1;
   string message = 2;
+  string value = 3;
 }
 
 // Raft
