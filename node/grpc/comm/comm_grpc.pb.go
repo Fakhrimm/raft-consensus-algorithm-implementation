@@ -27,6 +27,7 @@ type CommServiceClient interface {
 	GetValue(ctx context.Context, in *GetValueRequest, opts ...grpc.CallOption) (*GetValueResponse, error)
 	SetValue(ctx context.Context, in *SetValueRequest, opts ...grpc.CallOption) (*SetValueResponse, error)
 	StrlnValue(ctx context.Context, in *StrlnValueRequest, opts ...grpc.CallOption) (*StrlnValueResponse, error)
+	DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*DeleteValueResponse, error)
 	AppendValue(ctx context.Context, in *AppendValueRequest, opts ...grpc.CallOption) (*AppendValueResponse, error)
 	// Raft
 	AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error)
@@ -86,6 +87,15 @@ func (c *commServiceClient) StrlnValue(ctx context.Context, in *StrlnValueReques
 	return out, nil
 }
 
+func (c *commServiceClient) DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*DeleteValueResponse, error) {
+	out := new(DeleteValueResponse)
+	err := c.cc.Invoke(ctx, "/comm.CommService/DeleteValue", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *commServiceClient) AppendValue(ctx context.Context, in *AppendValueRequest, opts ...grpc.CallOption) (*AppendValueResponse, error) {
 	out := new(AppendValueResponse)
 	err := c.cc.Invoke(ctx, "/comm.CommService/AppendValue", in, out, opts...)
@@ -122,6 +132,7 @@ type CommServiceServer interface {
 	GetValue(context.Context, *GetValueRequest) (*GetValueResponse, error)
 	SetValue(context.Context, *SetValueRequest) (*SetValueResponse, error)
 	StrlnValue(context.Context, *StrlnValueRequest) (*StrlnValueResponse, error)
+	DeleteValue(context.Context, *DeleteValueRequest) (*DeleteValueResponse, error)
 	AppendValue(context.Context, *AppendValueRequest) (*AppendValueResponse, error)
 	// Raft
 	AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error)
@@ -147,6 +158,9 @@ func (UnimplementedCommServiceServer) SetValue(context.Context, *SetValueRequest
 }
 func (UnimplementedCommServiceServer) StrlnValue(context.Context, *StrlnValueRequest) (*StrlnValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StrlnValue not implemented")
+}
+func (UnimplementedCommServiceServer) DeleteValue(context.Context, *DeleteValueRequest) (*DeleteValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteValue not implemented")
 }
 func (UnimplementedCommServiceServer) AppendValue(context.Context, *AppendValueRequest) (*AppendValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendValue not implemented")
@@ -260,6 +274,24 @@ func _CommService_StrlnValue_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CommService_DeleteValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommServiceServer).DeleteValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/comm.CommService/DeleteValue",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommServiceServer).DeleteValue(ctx, req.(*DeleteValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _CommService_AppendValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AppendValueRequest)
 	if err := dec(in); err != nil {
@@ -340,6 +372,10 @@ var CommService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StrlnValue",
 			Handler:    _CommService_StrlnValue_Handler,
+		},
+		{
+			MethodName: "DeleteValue",
+			Handler:    _CommService_DeleteValue_Handler,
 		},
 		{
 			MethodName: "AppendValue",

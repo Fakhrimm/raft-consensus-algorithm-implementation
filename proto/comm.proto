@@ -10,6 +10,7 @@ service CommService {
   rpc GetValue (GetValueRequest) returns (GetValueResponse);
   rpc SetValue (SetValueRequest) returns (SetValueResponse);
   rpc StrlnValue (StrlnValueRequest) returns (StrlnValueResponse);
+  rpc DeleteValue (DeleteValueRequest) returns (DeleteValueResponse);
   rpc AppendValue (AppendValueRequest) returns (AppendValueResponse);
 
   // Raft
@@ -50,6 +51,15 @@ message StrlnValueResponse {
   string message = 3;
 }
 
+message DeleteValueRequest {
+  string key = 1;
+}
+message DeleteValueResponse {
+  int32 code = 1;
+  string value = 2;
+  string message = 3;
+}
+
 message AppendValueRequest {
   string key = 1;
   string value = 2;
@@ -74,7 +84,6 @@ message AppendEntriesRequest {
   repeated Entry entries = 5;
   int32 leaderCommit = 6;
 }
-
 message AppendEntriesResponse {
   int32 term = 1;
   bool success = 2;
@@ -86,7 +95,6 @@ message RequestVoteRequest {
   int32 lastLogIndex = 3;
   int32 lastLogTerm = 4;
 }
-
 message RequestVoteResponse {
   int32 term = 1;
   bool voteGranted = 2;

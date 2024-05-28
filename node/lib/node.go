@@ -8,6 +8,8 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -50,6 +52,7 @@ type Info struct {
 type Node struct {
 	// General attribute
 	Running bool
+	mutex   sync.Mutex
 
 	// Grpc purposes
 	address    net.TCPAddr
@@ -57,8 +60,10 @@ type Node struct {
 	grpcClient comm.CommServiceClient
 
 	// Raft purposes
-	state State
-	info  Info
+	state               State
+	info                Info
+	electionTimer       *time.Timer
+	electionResetSignal chan bool
 
 	// Application purposes
 	app Application
@@ -71,8 +76,10 @@ func NewNode(addr string) *Node {
 	}
 
 	node := &Node{
-		address: *resolved,
+		address:             *resolved,
+		electionResetSignal: make(chan bool),
 	}
+
 	return node
 }
 
@@ -80,12 +87,17 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int) {
 	log.Printf("Initializing node")
 	node.InitServer()
 	node.ReadServerList(hostfile)
+
 	node.info.timeoutAvgTime = timeoutAvgTime
 
-	node.CheckSanity()
+	node.resetElectionTimer()
 
+	// node.CheckSanity()
 	log.Printf("Node initialization complete with address %v and id %v", node.address.String(), node.info.id)
 	node.Running = true
+	node.state = Follower
+
+	go node.ElectionTimerHandler()
 }
 
 func (node *Node) InitServer() {
@@ -105,7 +117,8 @@ func (node *Node) InitServer() {
 
 	go func() {
 		if err := node.grpcServer.Serve(lis); err != nil {
-			log.Fatalf("failed to serve %v", err)
+			node.Running = false
+			log.Fatalf("Failed to serve %v", err)
 		}
 	}()
 }
@@ -162,32 +175,44 @@ func (node *Node) Call(address string, callable func()) {
 	conn.Close()
 }
 
-func (n *Node) CheckSanity() {
+func (node *Node) CheckSanity() {
 	key := "__CheckSanity__"
 
-	oldVal := n.app.Get(key)
-	log.Printf("Checking own address of %v", n.address.String())
-	n.Call(n.address.String(), func() {
-		response_test, err_test := n.grpcClient.Ping(context.Background(), &comm.BasicRequest{})
-		if err_test != nil {
-			log.Printf("Sanity check error: %v", err_test)
+	oldVal := node.app.Get(key)
+	log.Printf("Checking own address of %v", node.address.String())
+	node.Call(node.address.String(), func() {
+		responseTest, errTest := node.grpcClient.Ping(context.Background(), &comm.BasicRequest{})
+		if errTest != nil {
+			log.Printf("Sanity check error: %v", errTest)
 		}
-		log.Printf("Test Response: %v", response_test.Message)
+		log.Printf("Test Response: %v", responseTest.Message)
 
-		response_set, err_set := n.grpcClient.SetValue(context.Background(), &comm.SetValueRequest{Key: key, Value: "OK"})
-		if err_set != nil {
-			log.Printf("Sanity check error: %v", err_set)
+		responseSet, errSet := node.grpcClient.SetValue(context.Background(), &comm.SetValueRequest{Key: key, Value: "OK"})
+		if errSet != nil {
+			log.Printf("Sanity check error: %v", errSet)
 		}
-		log.Printf("Set Response: %v", response_set.Message)
+		log.Printf("Set Response: %v", responseSet.Message)
 
-		response_get, err_get := n.grpcClient.GetValue(context.Background(), &comm.GetValueRequest{Key: key})
-		if err_get != nil {
-			log.Printf("Sanity check error: %v", err_get)
+		responseGet, errGet := node.grpcClient.GetValue(context.Background(), &comm.GetValueRequest{Key: key})
+		if errGet != nil {
+			log.Printf("Sanity check error: %v", errGet)
 		}
-		log.Printf("Get Response: %v", response_get.Value)
+		log.Printf("Get Response: %v", responseGet.Value)
 	})
 
-	n.app.Set(key, oldVal)
+	node.app.Set(key, oldVal)
+}
+
+func (node *Node) CommitLogEntries(newCommitIndex int) {
+	for i := node.info.commitIndex + 1; i <= newCommitIndex; i++ {
+		entry := node.info.log[i]
+		if entry.key == "" {
+			node.app.Del(entry.key)
+		} else {
+			node.app.Set(entry.key, entry.value)
+		}
+	}
+	node.info.commitIndex = newCommitIndex
 }
 
 func (node *Node) Stop() {
