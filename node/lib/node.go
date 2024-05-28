@@ -117,8 +117,8 @@ func (node *Node) InitServer() {
 
 	go func() {
 		if err := node.grpcServer.Serve(lis); err != nil {
-			log.Fatalf("failed to serve %v", err)
 			node.Running = false
+			log.Fatalf("Failed to serve %v", err)
 		}
 	}()
 }
