@@ -72,13 +72,14 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 		s.Node.info.log = s.Node.info.log[:in.PrevLogIndex+1]
 	}
 
-	// Append Entries to Node
-	newLog := LogEntry{
-		term:  int(in.Entries[0].Term),
-		key:   in.Entries[0].Key,
-		value: in.Entries[0].Value,
+	for _, entry := range in.Entries {
+		newLog := LogEntry{
+			term:  int(entry.Term),
+			key:   entry.Key,
+			value: entry.Value,
+		}
+		s.Node.info.log = append(s.Node.info.log, newLog)
 	}
-	s.Node.info.log = append(s.Node.info.log, newLog)
 
 	// If leaderCommit > commitIndex, set commitIndex =
 	// min(leaderCommit, index of last new entry)
