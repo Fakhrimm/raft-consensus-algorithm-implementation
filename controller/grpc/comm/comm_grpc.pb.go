@@ -30,7 +30,6 @@ type CommServiceClient interface {
 	DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*DeleteValueResponse, error)
 	AppendValue(ctx context.Context, in *AppendValueRequest, opts ...grpc.CallOption) (*AppendValueResponse, error)
 	// Raft
-	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 	AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error)
 	RequestVote(ctx context.Context, in *RequestVoteRequest, opts ...grpc.CallOption) (*RequestVoteResponse, error)
 }
@@ -106,15 +105,6 @@ func (c *commServiceClient) AppendValue(ctx context.Context, in *AppendValueRequ
 	return out, nil
 }
 
-func (c *commServiceClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
-	out := new(HeartbeatResponse)
-	err := c.cc.Invoke(ctx, "/comm.CommService/Heartbeat", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *commServiceClient) AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error) {
 	out := new(AppendEntriesResponse)
 	err := c.cc.Invoke(ctx, "/comm.CommService/AppendEntries", in, out, opts...)
@@ -145,7 +135,6 @@ type CommServiceServer interface {
 	DeleteValue(context.Context, *DeleteValueRequest) (*DeleteValueResponse, error)
 	AppendValue(context.Context, *AppendValueRequest) (*AppendValueResponse, error)
 	// Raft
-	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error)
 	RequestVote(context.Context, *RequestVoteRequest) (*RequestVoteResponse, error)
 	mustEmbedUnimplementedCommServiceServer()
@@ -175,9 +164,6 @@ func (UnimplementedCommServiceServer) DeleteValue(context.Context, *DeleteValueR
 }
 func (UnimplementedCommServiceServer) AppendValue(context.Context, *AppendValueRequest) (*AppendValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendValue not implemented")
-}
-func (UnimplementedCommServiceServer) Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Heartbeat not implemented")
 }
 func (UnimplementedCommServiceServer) AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendEntries not implemented")
@@ -324,24 +310,6 @@ func _CommService_AppendValue_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CommService_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HeartbeatRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CommServiceServer).Heartbeat(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/comm.CommService/Heartbeat",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CommServiceServer).Heartbeat(ctx, req.(*HeartbeatRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _CommService_AppendEntries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AppendEntriesRequest)
 	if err := dec(in); err != nil {
@@ -412,10 +380,6 @@ var CommService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AppendValue",
 			Handler:    _CommService_AppendValue_Handler,
-		},
-		{
-			MethodName: "Heartbeat",
-			Handler:    _CommService_Heartbeat_Handler,
 		},
 		{
 			MethodName: "AppendEntries",

@@ -51,12 +51,6 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 	return &comm.AppendEntriesResponse{}, nil
 }
 
-func (s *server) Heartbeat(ctx context.Context, in *comm.HeartbeatRequest) (*comm.HeartbeatResponse, error) {
-	// TODO: Implement
-	s.Node.onHeartBeat(in)
-	return &comm.HeartbeatResponse{}, nil
-}
-
 func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (*comm.RequestVoteResponse, error) {
 	log.Printf("")
 

@@ -146,9 +146,9 @@ func (node *Node) initHeartbeat() {
 				go func(peerAddr string) {
 					defer cancel()
 
-					// TODO: Implement heartbeat functions
+					// TODO: Implement append entries functions
 					node.Call(peer.String(), func() {
-						_, err := node.grpcClient.Heartbeat(ctx, &comm.HeartbeatRequest{})
+						_, err := node.grpcClient.AppendEntries(ctx, &comm.AppendEntriesRequest{})
 						if err != nil {
 							log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
 						}
@@ -159,9 +159,6 @@ func (node *Node) initHeartbeat() {
 	}
 }
 
-func (node *Node) onHeartBeat(info *comm.HeartbeatRequest) {
-	// TODO: Handle if a candidate node receives a heartbeat
-	// TODO: Implement
-	log.Printf("[Heartbeat] Received heartbeat from: %v", info.LeaderId)
+func (node *Node) onHeartBeat() {
 	node.electionResetSignal <- true
 }
