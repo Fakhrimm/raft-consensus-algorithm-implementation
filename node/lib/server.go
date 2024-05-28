@@ -12,6 +12,16 @@ type server struct {
 }
 
 // Application purposes
+func (s *server) ValidateRequest() (code int32, message string) {
+	if s.Node.state != Leader {
+		return 501, s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
+	} else if !s.Node.info.serverUp {
+		return 503, "Service Unavailable"
+	} else {
+		return 200, "OK"
+	}
+}
+
 func (s *server) Ping(ctx context.Context, in *comm.BasicRequest) (*comm.BasicResponse, error) {
 	return &comm.BasicResponse{Code: 200, Message: "PONG"}, nil
 }
@@ -27,13 +37,10 @@ func (s *server) GetValue(ctx context.Context, in *comm.GetValueRequest) (*comm.
 	var value string
 
 	// TODO: Give feedback when value is not set
-	if s.Node.state == Leader {
-		code = 200
+	code, message = s.ValidateRequest()
+	if code == 200 {
 		message = "Value fetched successfully"
 		value = s.Node.app.Get(in.Key)
-	} else {
-		code = 501
-		message = s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
 	}
 
 	return &comm.GetValueResponse{Code: code, Message: message, Value: value}, nil
@@ -44,16 +51,15 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 	var message string
 	var value string
 
-	// TODO: Synchronize before sending ok value
-	if s.Node.state == Leader {
-		s.Node.app.Set(in.Key, in.Value)
+	// TODO: Synchronize before sending ok
+	code, message = s.ValidateRequest()
+	if code == 200 {
+		message = "Value set request received"
 
-		code = 200
-		message = "Value set successfully"
-		value = s.Node.app.Get(in.Key)
-	} else {
-		code = 501
-		message = s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
+		// s.Node.info.log = append(s.Node.info.log, comm.Entry{
+		// 	Term: in.,
+		// })
+		value = s.Node.app.Set(in.Key, in.Value)
 	}
 
 	return &comm.SetValueResponse{Code: code, Message: message, Value: value}, nil
@@ -64,16 +70,11 @@ func (s *server) StrlnValue(ctx context.Context, in *comm.StrlnValueRequest) (*c
 	var message string
 	var value int32
 
-	// TODO: Synchronize before sending ok value
-	if s.Node.state == Leader {
-		length := int32(s.Node.app.Strln(in.Key))
-
-		code = 200
+	// TODO: Synchronize before sending ok
+	code, message = s.ValidateRequest()
+	if code == 200 {
 		message = "Strlen fetched successfully"
-		value = length
-	} else {
-		code = 501
-		message = s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
+		value = int32(s.Node.app.Strln(in.Key))
 	}
 
 	return &comm.StrlnValueResponse{Code: code, Message: message, Value: value}, nil
@@ -84,14 +85,11 @@ func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (
 	var message string
 	var value string
 
-	// TODO: Synchronize before sending ok value
-	if s.Node.state == Leader {
-		code = 200
+	// TODO: Synchronize before sending ok
+	code, message = s.ValidateRequest()
+	if code == 200 {
 		message = "Key deleted successfully"
 		value = s.Node.app.Del(in.Key)
-	} else {
-		code = 501
-		message = s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
 	}
 
 	return &comm.DeleteValueResponse{Code: code, Message: message, Value: value}, nil
@@ -102,21 +100,17 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 	var message string
 	var value string
 
-	// TODO: Synchronize before sending ok value
-	if s.Node.state == Leader {
-		code = 200
+	// TODO: Synchronize before sending ok
+	code, message = s.ValidateRequest()
+	if code == 200 {
 		message = "Key appended successfully"
 		value = s.Node.app.Append(in.Key, in.Value)
-	} else {
-		code = 501
-		message = s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
 	}
 
 	return &comm.AppendValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
 // Raft purposes
-
 func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesRequest) (*comm.AppendEntriesResponse, error) {
 	//Reply false if term from leader < currentTerm (§5.1)
 	if in.Term < int32(s.Node.info.currentTerm) {
@@ -125,6 +119,7 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 
 	// Reset election timer
 	s.Node.onHeartBeat()
+	s.Node.info.leaderId = int(in.LeaderId)
 
 	// Reply false if log doesn’t contain an entry at prevLogIndex
 	if len(s.Node.info.log) < int(in.PrevLogIndex) {

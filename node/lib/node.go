@@ -25,18 +25,22 @@ const (
 
 type Info struct {
 	// Persistent
-	id               int
-	leaderId         int
-	currentTerm      int
-	votedFor         int
-	log              []comm.Entry
-	clusterAddresses []net.TCPAddr
-	clusterCount     int
-	timeoutAvgTime   int
+	id                  int
+	leaderId            int
+	currentTerm         int
+	votedFor            int
+	log                 []comm.Entry
+	clusterAddresses    []net.TCPAddr
+	clusterCount        int
+	newClusterAddresses []net.TCPAddr
+	newClusterCount     int
+	isJoinConsensus     bool
+	timeoutAvgTime      int
 
 	// Volatile
 	commitIndex int
 	lastApplied int
+	serverUp    bool
 
 	// Leaders
 	nextIndex  []int
@@ -77,10 +81,14 @@ func NewNode(addr string) *Node {
 	return node
 }
 
-func (node *Node) Init(hostfile string, timeoutAvgTime int) {
+func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, isJoin bool) {
 	log.Printf("Initializing node")
 	node.InitServer()
-	node.ReadServerList(hostfile)
+
+	node.info.clusterAddresses, node.info.clusterCount = node.ReadServerList(hostfile)
+	log.Printf("Check: %v", node.info.clusterAddresses)
+	node.info.newClusterAddresses, node.info.newClusterCount = node.ReadServerList(newHostfile)
+	node.info.isJoinConsensus = isJoin
 
 	node.info.timeoutAvgTime = timeoutAvgTime
 
@@ -117,7 +125,7 @@ func (node *Node) InitServer() {
 	}()
 }
 
-func (node *Node) ReadServerList(filename string) []net.TCPAddr {
+func (node *Node) ReadServerList(filename string) ([]net.TCPAddr, int) {
 	log.Printf("Initializing server list")
 
 	var serverList []net.TCPAddr
@@ -150,10 +158,7 @@ func (node *Node) ReadServerList(filename string) []net.TCPAddr {
 		index++
 	}
 
-	node.info.clusterAddresses = serverList
-	node.info.clusterCount = len(serverList)
-
-	return node.info.clusterAddresses
+	return serverList, len(serverList)
 }
 
 func (node *Node) Call(address string, callable func()) {

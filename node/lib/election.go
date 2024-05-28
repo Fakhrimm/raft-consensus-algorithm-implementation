@@ -22,7 +22,7 @@ func (node *Node) GenerateTimeoutDelay() time.Duration {
 	// timeout := time.Duration(timeoutTime) * time.Millisecond
 	timeout := time.Duration(timeoutTime) * time.Second / 100 // Second to visualize it better, switch to millis on actual
 
-	log.Printf("Generated timeout duration is: %v", timeout)
+	// log.Printf("[Election] Generated timeout duration is: %v", timeout)
 	return timeout
 }
 
@@ -39,12 +39,12 @@ func (node *Node) ElectionTimerHandler() {
 		select {
 		case <-node.electionTimer.C:
 			node.mutex.Lock()
-			log.Println("Election timeout occured")
+			log.Println("[Election] Election timeout occured")
 			node.startElection()
 			node.resetElectionTimer()
 			node.mutex.Unlock()
 		case <-node.electionResetSignal:
-			log.Println("Received election reset signal")
+			// log.Println("[Election] Received election reset signal")
 			node.mutex.Lock()
 			node.resetElectionTimer()
 			node.mutex.Unlock()
@@ -122,6 +122,7 @@ func (node *Node) startElection() {
 
 	if vote > node.info.clusterCount/2 {
 		log.Printf("[Election] Node is now a leader for term %v", node.info.currentTerm)
+		node.info.serverUp = true
 		node.state = Leader
 
 		node.info.matchIndex = make([]int, node.info.clusterCount)
@@ -146,13 +147,15 @@ func (node *Node) initHeartbeat() {
 
 	for node.state == Leader {
 		for range ticker.C {
+
 			var waitGroup sync.WaitGroup
 			heartbeatCh := make(chan bool, node.info.clusterCount)
+
 			for index, peer := range node.info.clusterAddresses {
 				if peer.String() == node.address.String() {
 					continue
 				}
-				log.Printf("[Heartbeat] Sending heartbeat to node %v: %v", index, peer)
+				// log.Printf("[Heartbeat] Sending heartbeat to node %v: %v", index, peer)
 
 				prevLogIndex := node.info.nextIndex[index] - 1
 				prevLogTerm := int32(0)
@@ -179,11 +182,10 @@ func (node *Node) initHeartbeat() {
 					Entries:      sentEntries,
 				}
 
-				log.Printf("[Heartbeat] data term: %v", data.Term)
-				log.Printf("[Heartbeat] data leader id: %v", data.LeaderId)
-				log.Printf("[Heartbeat] data entries: %v", data.Entries)
 				// log.Printf("[Heartbeat] data to send: %v", data)
-				// log.Printf("[Heartbeat] data to send: %v", data)
+				// log.Printf("[Heartbeat] data term: %v", data.Term)
+				// log.Printf("[Heartbeat] data leader id: %v", data.LeaderId)
+				// log.Printf("[Heartbeat] data entries: %v", data.Entries)
 
 				waitGroup.Add(1)
 				ctx, cancel := context.WithTimeout(context.Background(), 2*interval)
@@ -196,9 +198,9 @@ func (node *Node) initHeartbeat() {
 					// TODO: Implement append entries functions
 					node.Call(peer.String(), func() {
 						response, err := node.grpcClient.AppendEntries(ctx, data)
-						heartbeatCh <- true
 						if err != nil {
 							log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
+							heartbeatCh <- false
 						} else {
 							if response.Success {
 								node.info.matchIndex[index] = int(prevLogIndex) + len(sentEntries)
@@ -206,6 +208,7 @@ func (node *Node) initHeartbeat() {
 							} else {
 								node.info.nextIndex[index]--
 							}
+							heartbeatCh <- true
 						}
 					})
 				}(peer.String())
@@ -221,11 +224,14 @@ func (node *Node) initHeartbeat() {
 					aliveNodeCount += 1
 				}
 			}
+			log.Printf("[Heartbeat] Total received heartbeat is %v/%v", aliveNodeCount, node.info.clusterCount)
 
 			if 2*aliveNodeCount <= node.info.clusterCount {
 				// TODO: implement if mayority of server is not alive
+				node.info.serverUp = false
 			} else {
 				node.updateMajority()
+				node.info.serverUp = true
 			}
 		}
 	}

@@ -45,7 +45,9 @@ function Server {
         [string]$Addr,
         [int]$Port = 60000,
         [int]$Timeout = 200,
+        [boolean]$IsJoin = false,
         [string]$Hostfile = "/config/Hostfile"
+        [string]$HostfileNew = ""
     )
     if (-not $Addr) {
         $Addr = WifiIP
@@ -56,7 +58,7 @@ function Server {
     Write-Host "Starting node on ${Addr}:${Port}"
     
     Push-Location -Path "node"
-    Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k `"go run main.go -addr ${Addr}:${Port} -hostfile $Hostfile -timeout $Timeout`"" -NoNewWindow
+    Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k `"go run main.go -addr ${Addr}:${Port} -hostfile $Hostfile -hostfilenew $HostfileNew -isjoin $IsJoin -timeout $Timeout`"" -NoNewWindow
     Pop-Location
 }
 
