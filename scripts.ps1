@@ -34,6 +34,12 @@ function Proto {
     Write-Host "Proto files compiled and copied successfully."
 }
 
+function Client {
+    Push-Location -Path "client"
+    npm run dev
+    Pop-Location
+}
+
 function Server {
     param (
         [string]$Addr,
