@@ -4,6 +4,8 @@ import (
 	"Node/grpc/comm"
 	"context"
 	"log"
+	"net"
+	"strings"
 )
 
 type server struct {
@@ -121,6 +123,77 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 	return &comm.AppendValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
+func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembershipRequest) (*comm.ChangeMembershipResponse, error) {
+	// clusterAddresses & newClusterAddresses example:
+	// "10.1.78.242:60000,10.1.78.242:60001,10.1.78.242:60002"
+	// (separated by comma)
+	var code int32
+	var message string
+
+	var clusterAddresses []net.TCPAddr
+	var newClusterAddresses []net.TCPAddr
+
+	// Validate the request first
+	code, message = s.ValidateRequest()
+	if code == 200 {
+		// Parse the (old) addresses and new addresses
+		clusterAddresses, newClusterAddresses = parseAddresses(in.ClusterAddresses, in.NewClusterAddresses)
+
+		// Set it in the node
+		s.Node.info.clusterAddresses = clusterAddresses
+		s.Node.info.newClusterAddresses = newClusterAddresses
+		s.Node.info.clusterCount = len(clusterAddresses)
+		s.Node.info.newClusterCount = len(clusterAddresses)
+
+		// Set that the node is in the joint consensus state
+		s.Node.info.isJointConsensus = true
+
+		// Append entry to log
+		s.Node.info.log = append(s.Node.info.log, comm.Entry{
+			Term:    int32(s.Node.info.currentTerm),
+			Value:   in.NewClusterAddresses,
+			Command: int32(NewOldConfig),
+		})
+	}
+
+	return &comm.ChangeMembershipResponse{Code: code, Message: message, Value: in.NewClusterAddresses}, nil
+}
+
+func parseAddresses(clusterAddresses string, newClusterAddresses string) ([]net.TCPAddr, []net.TCPAddr) {
+	var clusterAddressesTcp []net.TCPAddr
+	var newClusterAddressesTcp []net.TCPAddr
+
+	if clusterAddresses != "" {
+
+		addresses := strings.Split(clusterAddresses, ",")
+
+		for _, address := range addresses {
+			a, err := net.ResolveTCPAddr("tcp", address)
+			if err != nil {
+				log.Fatalf("Invalid address: %v", address)
+			}
+
+			clusterAddressesTcp = append(clusterAddressesTcp, *a)
+		}
+	}
+
+	if newClusterAddresses != "" {
+
+		newAddresses := strings.Split(newClusterAddresses, ",")
+
+		for _, newAddress := range newAddresses {
+			a, err := net.ResolveTCPAddr("tcp", newAddress)
+			if err != nil {
+				log.Fatalf("Invalid address: %v", newAddress)
+			}
+
+			clusterAddressesTcp = append(clusterAddressesTcp, *a)
+		}
+	}
+
+	return clusterAddressesTcp, newClusterAddressesTcp
+}
+
 // Raft purposes
 func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesRequest) (*comm.AppendEntriesResponse, error) {
 	//Reply false if term from leader < currentTerm (§5.1)
@@ -132,7 +205,7 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 	s.Node.onHeartBeat()
 	s.Node.info.leaderId = int(in.LeaderId)
 
-	// Reply false if log doesn’t contain an entry at prevLogIndex
+	// Reply false if log does not contain an entry at prevLogIndex
 	if len(s.Node.info.log) < int(in.PrevLogIndex) {
 		return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
 	}
@@ -160,8 +233,8 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 
 		if entry.Command == int32(NewOldConfig) {
 			s.Node.info.isJointConsensus = true
-
-			// TODO parse from value to add to the newClusterCount
+			_, s.Node.info.newClusterAddresses = parseAddresses("", entry.Value)
+			s.Node.info.newClusterCount = len(s.Node.info.newClusterAddresses)
 
 		} else if entry.Command == int32(NewConfig) {
 			s.Node.info.isJointConsensus = false
