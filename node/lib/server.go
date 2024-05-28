@@ -68,7 +68,10 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 		}
 	}
 
-	s.Node.info.log = s.Node.info.log[:in.PrevLogIndex+1]
+	if len(s.Node.info.log) > 0 {
+		maxIdx := max(0, in.PrevLogIndex+1)
+		s.Node.info.log = s.Node.info.log[:maxIdx]
+	}
 
 	for _, entry := range in.Entries {
 		newLog := comm.Entry{

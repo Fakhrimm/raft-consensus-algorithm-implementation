@@ -200,10 +200,10 @@ func (node *Node) CheckSanity() {
 func (node *Node) CommitLogEntries(newCommitIndex int) {
 	for i := node.info.commitIndex + 1; i <= newCommitIndex; i++ {
 		entry := node.info.log[i]
-		if entry.key == "" {
-			node.app.Del(entry.key)
+		if entry.Key == "" {
+			node.app.Del(entry.Key)
 		} else {
-			node.app.Set(entry.key, entry.value)
+			node.app.Set(entry.Key, entry.Value)
 		}
 	}
 	node.info.commitIndex = newCommitIndex
