@@ -12,7 +12,7 @@ service CommService {
   rpc StrlnValue (StrlnValueRequest) returns (StrlnValueResponse);
   rpc DeleteValue (DeleteValueRequest) returns (DeleteValueResponse);
   rpc AppendValue (AppendValueRequest) returns (AppendValueResponse);
-  rpc ChangeMembership (ChangeMembershipRequest) returns (ChangeMembershipRequest);
+  rpc ChangeMembership (ChangeMembershipRequest) returns (ChangeMembershipResponse);
 
   // Raft
   rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResponse);

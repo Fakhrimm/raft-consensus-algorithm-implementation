@@ -29,7 +29,7 @@ type CommServiceClient interface {
 	StrlnValue(ctx context.Context, in *StrlnValueRequest, opts ...grpc.CallOption) (*StrlnValueResponse, error)
 	DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*DeleteValueResponse, error)
 	AppendValue(ctx context.Context, in *AppendValueRequest, opts ...grpc.CallOption) (*AppendValueResponse, error)
-	ChangeMembership(ctx context.Context, in *ChangeMembershipRequest, opts ...grpc.CallOption) (*ChangeMembershipRequest, error)
+	ChangeMembership(ctx context.Context, in *ChangeMembershipRequest, opts ...grpc.CallOption) (*ChangeMembershipResponse, error)
 	// Raft
 	AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error)
 	RequestVote(ctx context.Context, in *RequestVoteRequest, opts ...grpc.CallOption) (*RequestVoteResponse, error)
@@ -106,8 +106,8 @@ func (c *commServiceClient) AppendValue(ctx context.Context, in *AppendValueRequ
 	return out, nil
 }
 
-func (c *commServiceClient) ChangeMembership(ctx context.Context, in *ChangeMembershipRequest, opts ...grpc.CallOption) (*ChangeMembershipRequest, error) {
-	out := new(ChangeMembershipRequest)
+func (c *commServiceClient) ChangeMembership(ctx context.Context, in *ChangeMembershipRequest, opts ...grpc.CallOption) (*ChangeMembershipResponse, error) {
+	out := new(ChangeMembershipResponse)
 	err := c.cc.Invoke(ctx, "/comm.CommService/ChangeMembership", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ type CommServiceServer interface {
 	StrlnValue(context.Context, *StrlnValueRequest) (*StrlnValueResponse, error)
 	DeleteValue(context.Context, *DeleteValueRequest) (*DeleteValueResponse, error)
 	AppendValue(context.Context, *AppendValueRequest) (*AppendValueResponse, error)
-	ChangeMembership(context.Context, *ChangeMembershipRequest) (*ChangeMembershipRequest, error)
+	ChangeMembership(context.Context, *ChangeMembershipRequest) (*ChangeMembershipResponse, error)
 	// Raft
 	AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error)
 	RequestVote(context.Context, *RequestVoteRequest) (*RequestVoteResponse, error)
@@ -176,7 +176,7 @@ func (UnimplementedCommServiceServer) DeleteValue(context.Context, *DeleteValueR
 func (UnimplementedCommServiceServer) AppendValue(context.Context, *AppendValueRequest) (*AppendValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendValue not implemented")
 }
-func (UnimplementedCommServiceServer) ChangeMembership(context.Context, *ChangeMembershipRequest) (*ChangeMembershipRequest, error) {
+func (UnimplementedCommServiceServer) ChangeMembership(context.Context, *ChangeMembershipRequest) (*ChangeMembershipResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ChangeMembership not implemented")
 }
 func (UnimplementedCommServiceServer) AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error) {
