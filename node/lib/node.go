@@ -175,32 +175,32 @@ func (node *Node) Call(address string, callable func()) {
 	conn.Close()
 }
 
-func (n *Node) CheckSanity() {
+func (node *Node) CheckSanity() {
 	key := "__CheckSanity__"
 
-	oldVal := n.app.Get(key)
-	log.Printf("Checking own address of %v", n.address.String())
-	n.Call(n.address.String(), func() {
-		response_test, err_test := n.grpcClient.Ping(context.Background(), &comm.BasicRequest{})
+	oldVal := node.app.Get(key)
+	log.Printf("Checking own address of %v", node.address.String())
+	node.Call(node.address.String(), func() {
+		response_test, err_test := node.grpcClient.Ping(context.Background(), &comm.BasicRequest{})
 		if err_test != nil {
 			log.Printf("Sanity check error: %v", err_test)
 		}
 		log.Printf("Test Response: %v", response_test.Message)
 
-		response_set, err_set := n.grpcClient.SetValue(context.Background(), &comm.SetValueRequest{Key: key, Value: "OK"})
+		response_set, err_set := node.grpcClient.SetValue(context.Background(), &comm.SetValueRequest{Key: key, Value: "OK"})
 		if err_set != nil {
 			log.Printf("Sanity check error: %v", err_set)
 		}
 		log.Printf("Set Response: %v", response_set.Message)
 
-		response_get, err_get := n.grpcClient.GetValue(context.Background(), &comm.GetValueRequest{Key: key})
+		response_get, err_get := node.grpcClient.GetValue(context.Background(), &comm.GetValueRequest{Key: key})
 		if err_get != nil {
 			log.Printf("Sanity check error: %v", err_get)
 		}
 		log.Printf("Get Response: %v", response_get.Value)
 	})
 
-	n.app.Set(key, oldVal)
+	node.app.Set(key, oldVal)
 }
 
 func (node *Node) Stop() {
