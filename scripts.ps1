@@ -25,6 +25,12 @@ function Proto {
     }
     Remove-Item -Path "grpc" -Recurse -Force
 
+    Push-Location -Path "client"
+    Remove-Item -Path "./src/grpc" -Recurse -Force
+    New-Item -ItemType Directory -Force -Path "./src/grpc" > $null
+    npx protoc --ts_out "./src/grpc" --proto_path ../proto ../proto/comm.proto 
+    Pop-Location
+
     Write-Host "Proto files compiled and copied successfully."
 }
 
