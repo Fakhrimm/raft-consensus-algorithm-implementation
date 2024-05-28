@@ -175,6 +175,7 @@ func (node *Node) initHeartbeat() {
 					LeaderCommit: int32(node.info.commitIndex),
 					Entries:      sentEntries,
 				}
+
 				log.Printf("[Heartbeat] data term: %v", data.Term)
 				log.Printf("[Heartbeat] data leader id: %v", data.LeaderId)
 				log.Printf("[Heartbeat] data entries: %v", data.Entries)
@@ -195,7 +196,8 @@ func (node *Node) initHeartbeat() {
 							log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
 						} else {
 							if response.Success {
-
+								node.info.matchIndex[index] = int(prevLogIndex) + len(sentEntries)
+								node.info.nextIndex[index] = node.info.matchIndex[index] + 1
 							} else {
 								node.info.nextIndex[index]--
 							}
