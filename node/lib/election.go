@@ -97,12 +97,13 @@ func (node *Node) startElection() {
 		node.state = Leader
 		node.initHeartbeat()
 	} else {
+		node.state = Follower
 		log.Print("[Election] Not enough vote!")
 	}
 }
 
 func (node *Node) initHeartbeat() {
-	interval := time.Duration(node.info.timeoutAvgTime/6) * time.Second / 100
+	interval := time.Duration(node.info.timeoutAvgTime) * time.Second / 100 / 6
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 

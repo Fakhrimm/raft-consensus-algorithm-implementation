@@ -64,9 +64,12 @@ func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (
 	term := s.Node.info.currentTerm
 
 	if term < int(in.Term) {
+		log.Printf("[Election] Giving vote for id %v", in.CandidateId)
 		vote = true
 		s.Node.info.votedFor = int(in.CandidateId)
 		s.Node.resetElectionTimer()
+	} else {
+		log.Printf("[Election] Node %v requests for vote, declined", in.CandidateId)
 	}
 
 	return &comm.RequestVoteResponse{Term: int32(term), VoteGranted: vote}, nil
