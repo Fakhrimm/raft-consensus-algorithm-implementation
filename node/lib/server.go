@@ -80,7 +80,13 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 	}
 	s.Node.info.log = append(s.Node.info.log, newLog)
 
-	return &comm.AppendEntriesResponse{}, nil
+	// If leaderCommit > commitIndex, set commitIndex =
+	// min(leaderCommit, index of last new entry)
+	if in.LeaderCommit > int32(s.Node.info.commitIndex) {
+		s.Node.info.commitIndex = min(int(in.LeaderCommit), len(s.Node.info.log)-1)
+	}
+
+	return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: true}, nil
 }
 
 func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (*comm.RequestVoteResponse, error) {
