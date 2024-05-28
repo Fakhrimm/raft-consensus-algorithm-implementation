@@ -230,10 +230,22 @@ func (node *Node) CommitLogEntries(newCommitIndex int) {
 				Term:    int32(node.info.currentTerm),
 				Command: int32(NewConfig),
 			}
-			// TODO: Append to log and update next index, etc.
+			node.appendToLog(newEntry)
 		}
 	}
 	node.info.commitIndex = newCommitIndex
+}
+
+func (node *Node) appendToLog(newEntry comm.Entry) {
+	node.info.log = append(node.info.log, newEntry)
+
+	node.info.matchIndex[node.info.id] = len(node.info.log) - 1
+
+	for index, nextIndex := range node.info.nextIndex {
+		if nextIndex == node.info.matchIndex[index] {
+			node.info.nextIndex[index]++
+		}
+	}
 }
 
 func (node *Node) Stop() {
