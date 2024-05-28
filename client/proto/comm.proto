@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package comm;
+
+option go_package = "grpc/comm";
+
+service CommService {
+  rpc Ping (BasicRequest) returns (BasicResponse);
+  rpc Stop (BasicRequest) returns (BasicResponse);
+  rpc GetValue (GetValueRequest) returns (GetValueResponse);
+  rpc SetValue (SetValueRequest) returns (SetValueResponse);
+  rpc StrlnValue (StrlnValueRequest) returns (StrlnValueResponse);
+  rpc DeleteValue (DeleteValueRequest) returns (DeleteValueResponse);
+  rpc AppendValue (AppendValueRequest) returns (AppendValueResponse);
+  rpc ChangeMembership (ChangeMembershipRequest) returns (ChangeMembershipResponse);
+
+  // Raft
+  rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResponse);
+  rpc RequestVote (RequestVoteRequest) returns (RequestVoteResponse);
+}
+
+//  Basic
+message BasicRequest {}
+message BasicResponse {
+  int32 code = 1;
+  string message = 2;
+}
+
+message GetValueRequest {
+  string key = 1;
+}
+message GetValueResponse {
+  int32 code = 1;
+  string message = 2;
+  string value = 3;
+}
+
+message SetValueRequest {
+  string key = 1;
+  string value = 2;
+}
+message SetValueResponse {
+  int32 code = 1;
+  string message = 2;
+  string value = 3;
+}
+
+message StrlnValueRequest {
+  string key = 1;
+}
+message StrlnValueResponse {
+  int32 code = 1;
+  string message = 2;
+  int32 value = 3;
+}
+
+message DeleteValueRequest {
+  string key = 1;
+}
+message DeleteValueResponse {
+  int32 code = 1;
+  string message = 2;
+  string value = 3;
+}
+
+message AppendValueRequest {
+  string key = 1;
+  string value = 2;
+}
+message AppendValueResponse {
+  int32 code = 1;
+  string message = 2;
+  string value = 3;
+}
+
+// Raft
+message Entry {
+  int32 term = 1;
+  string key = 2;
+  string value = 3;
+  bool isConfigEntry = 4;
+}
+
+message AppendEntriesRequest {
+  int32 term = 1;
+  int32 leaderId = 2;
+  int32 prevLogIndex = 3;
+  int32 prevLogTerm = 4;
+  repeated Entry entries = 5;
+  int32 leaderCommit = 6;
+}
+message AppendEntriesResponse {
+  int32 term = 1;
+  bool success = 2;
+}
+
+message RequestVoteRequest {
+  int32 term = 1;
+  int32 candidateId = 2;
+  int32 lastLogIndex = 3;
+  int32 lastLogTerm = 4;
+}
+message RequestVoteResponse {
+  int32 term = 1;
+  bool voteGranted = 2;
+}
+
+message ChangeMembershipRequest {
+  string clusterAddresses = 1;
+  string newClusterAddresses = 2;
+}
+
+message ChangeMembershipResponse {
+  int32 code = 1;
+  string message = 2;
+  string value = 3;
+}

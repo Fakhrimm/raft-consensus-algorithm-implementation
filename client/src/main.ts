@@ -18,7 +18,7 @@ import { GrpcWebFetchTransport } from "@protobuf-ts/grpcweb-transport";
 
 // grpc
 const transport = new GrpcWebFetchTransport({
-  baseUrl: "/10.1.78.161:60000/",
+  baseUrl: "https://10.1.78.161:60000/",
   format: "binary",
 });
 
