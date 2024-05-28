@@ -3,6 +3,7 @@ package node
 import (
 	"Node/grpc/comm"
 	"context"
+	"log"
 )
 
 type server struct {
@@ -10,6 +11,7 @@ type server struct {
 	Node *Node
 }
 
+// Application purposes
 func (s *server) Ping(ctx context.Context, in *comm.BasicRequest) (*comm.BasicResponse, error) {
 	return &comm.BasicResponse{Code: 0, Message: "PONG"}, nil
 }
@@ -43,7 +45,29 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 	return &comm.AppendValueResponse{Code: 0, Message: "Value appended sucessfully"}, nil
 }
 
+// Raft purposes
+func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesRequest) (*comm.AppendEntriesResponse, error) {
+	// TODO: Implement
+	return &comm.AppendEntriesResponse{}, nil
+}
+
 func (s *server) Heartbeat(ctx context.Context, in *comm.HeartbeatRequest) (*comm.HeartbeatResponse, error) {
+	// TODO: Implement
 	s.Node.onHeartBeat(in)
-	return &comm.HeartbeatResponse{Term: int32(s.Node.info.currentTerm), Success: true}, nil
+	return &comm.HeartbeatResponse{}, nil
+}
+
+func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (*comm.RequestVoteResponse, error) {
+	log.Printf("")
+
+	vote := false
+	term := s.Node.info.currentTerm
+
+	if term < int(in.Term) {
+		vote = true
+		s.Node.info.votedFor = int(in.CandidateId)
+		s.Node.resetElectionTimer()
+	}
+
+	return &comm.RequestVoteResponse{Term: int32(term), VoteGranted: vote}, nil
 }

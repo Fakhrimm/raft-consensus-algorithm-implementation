@@ -63,7 +63,7 @@ func (c *Controller) Run() {
 				continue
 			}
 			c.Call(parts[1], func() {
-				response_ping, err_ping := c.client.Ping(context.Background(), &comm.BasicRequest{})
+			response_ping, err_ping := c.client.Ping(context.Background(), &comm.BasicRequest{})
 				if err_ping != nil {
 					log.Printf("ping error: %v", err_ping)
 				}

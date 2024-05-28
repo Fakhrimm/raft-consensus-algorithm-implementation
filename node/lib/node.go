@@ -95,6 +95,7 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int) {
 	// node.CheckSanity()
 	log.Printf("Node initialization complete with address %v and id %v", node.address.String(), node.info.id)
 	node.Running = true
+	node.state = Follower
 
 	go node.ElectionTimerHandler()
 }
