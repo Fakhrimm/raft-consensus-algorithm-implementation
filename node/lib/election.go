@@ -133,8 +133,8 @@ func (node *Node) startElection() {
 			node.info.nextIndex[i] = int(lastLogIdx)
 			node.info.matchIndex[i] = -1
 		}
-		log.Printf("[Election] matchIndex: %v", node.info.matchIndex)
-		log.Printf("[Election] nextIndex: %v", node.info.nextIndex)
+		// log.Printf("[Election] matchIndex: %v", node.info.matchIndex)
+		// log.Printf("[Election] nextIndex: %v", node.info.nextIndex)
 
 		node.startAppendEntries()
 	} else {
@@ -168,7 +168,6 @@ func (node *Node) startAppendEntries() {
 
 				// TODO: Review, I don't think this is efficient
 				length := len(node.info.log) - prevLogIndex - 1
-				log.Printf("Log: %v %v %v", length, len(node.info.log), prevLogIndex)
 
 				sentEntries := make([]*comm.Entry, length)
 				for i := 0; i < length; i++ {
@@ -209,7 +208,6 @@ func (node *Node) startAppendEntries() {
 							log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
 							heartbeatCh <- false
 						} else {
-							log.Printf("response: %v", response.String())
 							if response.Success {
 								node.info.matchIndex[index] = int(prevLogIndex) + len(sentEntries)
 								node.info.nextIndex[index] = node.info.matchIndex[index] + 1
@@ -268,7 +266,7 @@ func (node *Node) updateMajority() {
 	for _, key := range keys {
 		sum += matchIndex[key]
 		if sum > majority {
-			log.Printf("[Transaction] updating majority keys: %v", keys)
+			// log.Printf("[Transaction] updating majority keys: %v", keys)
 			node.CommitLogEntries(key)
 			break
 		}
