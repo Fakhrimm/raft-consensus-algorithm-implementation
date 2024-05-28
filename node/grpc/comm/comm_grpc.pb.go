@@ -27,8 +27,10 @@ type CommServiceClient interface {
 	GetValue(ctx context.Context, in *GetValueRequest, opts ...grpc.CallOption) (*GetValueResponse, error)
 	SetValue(ctx context.Context, in *SetValueRequest, opts ...grpc.CallOption) (*SetValueResponse, error)
 	StrlnValue(ctx context.Context, in *StrlnValueRequest, opts ...grpc.CallOption) (*StrlnValueResponse, error)
+	DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*DeleteValueResponse, error)
 	AppendValue(ctx context.Context, in *AppendValueRequest, opts ...grpc.CallOption) (*AppendValueResponse, error)
 	// Raft
+	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 	AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error)
 	RequestVote(ctx context.Context, in *RequestVoteRequest, opts ...grpc.CallOption) (*RequestVoteResponse, error)
 }
@@ -86,9 +88,27 @@ func (c *commServiceClient) StrlnValue(ctx context.Context, in *StrlnValueReques
 	return out, nil
 }
 
+func (c *commServiceClient) DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*DeleteValueResponse, error) {
+	out := new(DeleteValueResponse)
+	err := c.cc.Invoke(ctx, "/comm.CommService/DeleteValue", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *commServiceClient) AppendValue(ctx context.Context, in *AppendValueRequest, opts ...grpc.CallOption) (*AppendValueResponse, error) {
 	out := new(AppendValueResponse)
 	err := c.cc.Invoke(ctx, "/comm.CommService/AppendValue", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *commServiceClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
+	out := new(HeartbeatResponse)
+	err := c.cc.Invoke(ctx, "/comm.CommService/Heartbeat", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -122,8 +142,10 @@ type CommServiceServer interface {
 	GetValue(context.Context, *GetValueRequest) (*GetValueResponse, error)
 	SetValue(context.Context, *SetValueRequest) (*SetValueResponse, error)
 	StrlnValue(context.Context, *StrlnValueRequest) (*StrlnValueResponse, error)
+	DeleteValue(context.Context, *DeleteValueRequest) (*DeleteValueResponse, error)
 	AppendValue(context.Context, *AppendValueRequest) (*AppendValueResponse, error)
 	// Raft
+	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error)
 	RequestVote(context.Context, *RequestVoteRequest) (*RequestVoteResponse, error)
 	mustEmbedUnimplementedCommServiceServer()
@@ -148,8 +170,14 @@ func (UnimplementedCommServiceServer) SetValue(context.Context, *SetValueRequest
 func (UnimplementedCommServiceServer) StrlnValue(context.Context, *StrlnValueRequest) (*StrlnValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StrlnValue not implemented")
 }
+func (UnimplementedCommServiceServer) DeleteValue(context.Context, *DeleteValueRequest) (*DeleteValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteValue not implemented")
+}
 func (UnimplementedCommServiceServer) AppendValue(context.Context, *AppendValueRequest) (*AppendValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendValue not implemented")
+}
+func (UnimplementedCommServiceServer) Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Heartbeat not implemented")
 }
 func (UnimplementedCommServiceServer) AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendEntries not implemented")
@@ -260,6 +288,24 @@ func _CommService_StrlnValue_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CommService_DeleteValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommServiceServer).DeleteValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/comm.CommService/DeleteValue",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommServiceServer).DeleteValue(ctx, req.(*DeleteValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _CommService_AppendValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AppendValueRequest)
 	if err := dec(in); err != nil {
@@ -274,6 +320,24 @@ func _CommService_AppendValue_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CommServiceServer).AppendValue(ctx, req.(*AppendValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CommService_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HeartbeatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommServiceServer).Heartbeat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/comm.CommService/Heartbeat",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommServiceServer).Heartbeat(ctx, req.(*HeartbeatRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -342,8 +406,16 @@ var CommService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _CommService_StrlnValue_Handler,
 		},
 		{
+			MethodName: "DeleteValue",
+			Handler:    _CommService_DeleteValue_Handler,
+		},
+		{
 			MethodName: "AppendValue",
 			Handler:    _CommService_AppendValue_Handler,
+		},
+		{
+			MethodName: "Heartbeat",
+			Handler:    _CommService_Heartbeat_Handler,
 		},
 		{
 			MethodName: "AppendEntries",

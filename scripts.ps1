@@ -32,7 +32,7 @@ function Server {
     param (
         [string]$Addr,
         [int]$Port = 60000,
-        [int]$Timeout = 5,
+        [int]$Timeout = 200,
         [string]$Hostfile = "/config/Hostfile"
     )
     if (-not $Addr) {
@@ -53,7 +53,7 @@ function Servers {
         [int]$Size = 1,
         [string]$Addr,
         [int]$Port = 60000,
-        [int]$Timeout = 5,
+        [int]$Timeout = 200,
         [string]$Hostfile = "/config/Hostfile"
     )
     if (-not $Addr) {

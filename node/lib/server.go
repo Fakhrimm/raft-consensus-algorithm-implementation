@@ -33,7 +33,17 @@ func (s *server) StrlnValue(ctx context.Context, in *comm.StrlnValueRequest) (*c
 	return &comm.StrlnValueResponse{Code: 0, Message: "Length fetched", Value: int32(len)}, nil
 }
 
+func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (*comm.DeleteValueResponse, error) {
+	value := s.Node.app.Del(in.Key)
+	return &comm.DeleteValueResponse{Code: 0, Message: "Value Deleted", Value: value}, nil
+}
+
 func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (*comm.AppendValueResponse, error) {
 	s.Node.app.Append(in.Key, in.Value)
 	return &comm.AppendValueResponse{Code: 0, Message: "Value appended sucessfully"}, nil
+}
+
+func (s *server) Heartbeat(ctx context.Context, in *comm.HeartbeatRequest) (*comm.HeartbeatResponse, error) {
+	s.Node.onHeartBeat(in)
+	return &comm.HeartbeatResponse{Term: int32(s.Node.info.currentTerm), Success: true}, nil
 }

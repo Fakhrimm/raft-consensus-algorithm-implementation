@@ -8,6 +8,8 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -50,6 +52,7 @@ type Info struct {
 type Node struct {
 	// General attribute
 	Running bool
+	mutex   sync.Mutex
 
 	// Grpc purposes
 	address    net.TCPAddr
@@ -57,8 +60,10 @@ type Node struct {
 	grpcClient comm.CommServiceClient
 
 	// Raft purposes
-	state State
-	info  Info
+	state               State
+	info                Info
+	electionTimer       *time.Timer
+	electionResetSignal chan bool
 
 	// Application purposes
 	app Application
@@ -71,8 +76,10 @@ func NewNode(addr string) *Node {
 	}
 
 	node := &Node{
-		address: *resolved,
+		address:             *resolved,
+		electionResetSignal: make(chan bool),
 	}
+
 	return node
 }
 
@@ -80,12 +87,16 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int) {
 	log.Printf("Initializing node")
 	node.InitServer()
 	node.ReadServerList(hostfile)
+
 	node.info.timeoutAvgTime = timeoutAvgTime
 
-	node.CheckSanity()
+	node.resetElectionTimer()
 
+	// node.CheckSanity()
 	log.Printf("Node initialization complete with address %v and id %v", node.address.String(), node.info.id)
 	node.Running = true
+
+	go node.ElectionTimerHandler()
 }
 
 func (node *Node) InitServer() {
@@ -106,6 +117,7 @@ func (node *Node) InitServer() {
 	go func() {
 		if err := node.grpcServer.Serve(lis); err != nil {
 			log.Fatalf("failed to serve %v", err)
+			node.Running = false
 		}
 	}()
 }
