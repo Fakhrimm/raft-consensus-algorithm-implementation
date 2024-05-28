@@ -18,6 +18,15 @@ import (
 type State int
 
 const (
+	Null State = iota
+	Set
+	Append
+	Delete
+	NewOldConfig
+	NewConfig
+)
+
+const (
 	Leader State = iota // https://go.dev/wiki/Iota
 	Candidate
 	Follower

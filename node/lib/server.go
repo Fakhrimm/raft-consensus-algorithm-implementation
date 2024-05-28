@@ -151,11 +151,13 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 
 	for _, entry := range in.Entries {
 		newLog := comm.Entry{
-			Term:  entry.Term,
-			Key:   entry.Key,
-			Value: entry.Value,
+			Term:    entry.Term,
+			Key:     entry.Key,
+			Value:   entry.Value,
+			Command: entry.Command,
 		}
 		s.Node.info.log = append(s.Node.info.log, newLog)
+
 	}
 
 	// If leaderCommit > commitIndex, set commitIndex =

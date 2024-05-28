@@ -168,10 +168,10 @@ func (node *Node) initHeartbeat() {
 				sentEntries := make([]*comm.Entry, length)
 				for i := 0; i < length; i++ {
 					sentEntries[i] = &comm.Entry{
-						Term:          node.info.log[prevLogIndex+1+i].Term,
-						Key:           node.info.log[prevLogIndex+1+i].Key,
-						Value:         node.info.log[prevLogIndex+1+i].Value,
-						IsConfigEntry: false,
+						Term:    node.info.log[prevLogIndex+1+i].Term,
+						Key:     node.info.log[prevLogIndex+1+i].Key,
+						Value:   node.info.log[prevLogIndex+1+i].Value,
+						Command: node.info.log[prevLogIndex+1+i].Command,
 					}
 				}
 				data := &comm.AppendEntriesRequest{
