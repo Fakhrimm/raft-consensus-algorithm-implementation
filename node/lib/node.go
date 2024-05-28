@@ -226,7 +226,11 @@ func (node *Node) CommitLogEntries(newCommitIndex int) {
 		case int32(NewConfig):
 			//TODO: Implement
 		case int32(NewOldConfig):
-			//TODO: Implement
+			newEntry := comm.Entry{
+				Term:    int32(node.info.currentTerm),
+				Command: int32(NewConfig),
+			}
+			// TODO: Append to log and update next index, etc.
 		}
 	}
 	node.info.commitIndex = newCommitIndex
