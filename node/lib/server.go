@@ -63,7 +63,7 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 
 	if in.PrevLogIndex >= 0 {
 		// Reply false if log entry term at prevLogIndex does not match prevLogTerm (§5.3)
-		if s.Node.info.log[in.PrevLogIndex].term != int(in.PrevLogTerm) {
+		if s.Node.info.log[in.PrevLogIndex].Term != in.PrevLogTerm {
 			return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
 		}
 	}
@@ -71,10 +71,10 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 	s.Node.info.log = s.Node.info.log[:in.PrevLogIndex+1]
 
 	for _, entry := range in.Entries {
-		newLog := LogEntry{
-			term:  int(entry.Term),
-			key:   entry.Key,
-			value: entry.Value,
+		newLog := comm.Entry{
+			Term:  entry.Term,
+			Key:   entry.Key,
+			Value: entry.Value,
 		}
 		s.Node.info.log = append(s.Node.info.log, newLog)
 	}
@@ -95,11 +95,17 @@ func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (
 	vote := false
 	term := s.Node.info.currentTerm
 
-	if term < int(in.Term) {
+	lastLogIdx := int32(len(s.Node.info.log) - 1)
+	lastLogTerm := int32(0)
+	if lastLogIdx > -1 {
+		lastLogTerm = int32(s.Node.info.log[lastLogIdx].Term)
+	}
+
+	if term < int(in.Term) && (in.LastLogTerm > lastLogTerm || (in.LastLogTerm == lastLogTerm && in.LastLogIndex >= lastLogIdx)) {
 		log.Printf("[Election] Giving vote for id %v", in.CandidateId)
 		vote = true
 		s.Node.info.votedFor = int(in.CandidateId)
-		s.Node.resetElectionTimer()
+		s.Node.electionResetSignal <- true
 	} else {
 		log.Printf("[Election] Node %v requests for vote, declined", in.CandidateId)
 	}

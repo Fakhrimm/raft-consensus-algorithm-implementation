@@ -43,6 +43,7 @@ func (node *Node) ElectionTimerHandler() {
 			node.resetElectionTimer()
 			node.mutex.Unlock()
 		case <-node.electionResetSignal:
+			log.Println("Received election reset signal")
 			node.mutex.Lock()
 			node.resetElectionTimer()
 			node.mutex.Unlock()
@@ -59,6 +60,13 @@ func (node *Node) startElection() {
 
 	log.Printf("[Election] Starting election for cluster size of %v", node.info.clusterCount)
 
+	// Fetch data for voting
+	lastLogIdx := int32(len(node.info.log) - 1)
+	lastLogTerm := int32(0)
+	if lastLogIdx > -1 {
+		lastLogTerm = node.info.log[lastLogIdx].Term
+	}
+
 	// Create channels
 	var waitGroup sync.WaitGroup
 	voteCh := make(chan bool, node.info.clusterCount)
@@ -74,23 +82,16 @@ func (node *Node) startElection() {
 		waitGroup.Add(1)
 		ctx, cancel := context.WithTimeout(context.Background(), 2*interval)
 
-		// TODO: Implement vote request here
 		go func(peerAddr string) {
 			defer cancel()
 			defer waitGroup.Done()
 
 			node.Call(peer.String(), func() {
-
-				// TODO: review, last log index committed or uncommited? not sure
-				lastLogTerm := 0
-				if len(node.info.log) > 0 {
-					lastLogTerm = node.info.log[node.info.commitIndex].term
-				}
 				response, err := node.grpcClient.RequestVote(ctx, &comm.RequestVoteRequest{
 					Term:         int32(node.info.currentTerm),
 					CandidateId:  int32(node.info.id),
-					LastLogIndex: int32(node.info.commitIndex),
-					LastLogTerm:  int32(lastLogTerm),
+					LastLogIndex: lastLogIdx,
+					LastLogTerm:  lastLogTerm,
 				})
 
 				voteCh <- false
@@ -121,6 +122,15 @@ func (node *Node) startElection() {
 	if vote > node.info.clusterCount/2 {
 		log.Printf("[Election] Node is now a leader for term %v", node.info.currentTerm)
 		node.state = Leader
+
+		node.info.matchIndex = make([]int, node.info.clusterCount)
+		node.info.nextIndex = make([]int, node.info.clusterCount)
+		for i := range node.info.nextIndex {
+			node.info.nextIndex[i] = int(lastLogIdx)
+		}
+		log.Printf("[Election] matchIndex: %v", node.info.matchIndex)
+		log.Printf("[Election] nextIndex: %v", node.info.nextIndex)
+
 		node.initHeartbeat()
 	} else {
 		node.state = Follower
@@ -135,22 +145,60 @@ func (node *Node) initHeartbeat() {
 
 	for node.state == Leader {
 		for range ticker.C {
-			for _, peer := range node.info.clusterAddresses {
+			for index, peer := range node.info.clusterAddresses {
 				if peer.String() == node.address.String() {
 					continue
 				}
-				log.Printf("[Heartbeat] Sending heartbeat to node: %v", peer)
+				log.Printf("[Heartbeat] Sending heartbeat to node %v: %v", index, peer)
+
+				prevLogIndex := node.info.nextIndex[index] - 1
+				prevLogTerm := int32(0)
+				if prevLogIndex > -1 {
+					prevLogTerm = node.info.log[prevLogIndex].Term
+				}
+
+				// TODO: Review, I don't think this is efficient
+				length := len(node.info.log) - prevLogIndex - 2
+				sentEntries := make([]*comm.Entry, length)
+				for i := 0; i < length; i++ {
+					sentEntries[i] = &comm.Entry{
+						Term:  node.info.log[prevLogIndex+1+i].Term,
+						Key:   node.info.log[prevLogIndex+1+i].Key,
+						Value: node.info.log[prevLogIndex+1+i].Value,
+					}
+				}
+				data := &comm.AppendEntriesRequest{
+					Term:         int32(node.info.currentTerm),
+					LeaderId:     int32(node.info.id),
+					PrevLogTerm:  prevLogTerm,
+					PrevLogIndex: int32(prevLogIndex),
+					LeaderCommit: int32(node.info.commitIndex),
+					Entries:      sentEntries,
+				}
+				log.Printf("[Heartbeat] data term: %v", data.Term)
+				log.Printf("[Heartbeat] data leader id: %v", data.LeaderId)
+				log.Printf("[Heartbeat] data entries: %v", data.Entries)
+				// log.Printf("[Heartbeat] data to send: %v", data)
+				// log.Printf("[Heartbeat] data to send: %v", data)
 
 				ctx, cancel := context.WithTimeout(context.Background(), 2*interval)
 
+				// TODO: Count failed heartbeats to indicate majority down
 				go func(peerAddr string) {
 					defer cancel()
 
 					// TODO: Implement append entries functions
 					node.Call(peer.String(), func() {
-						_, err := node.grpcClient.AppendEntries(ctx, &comm.AppendEntriesRequest{})
+						response, err := node.grpcClient.AppendEntries(ctx, data)
+
 						if err != nil {
 							log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
+						} else {
+							if response.Success {
+
+							} else {
+								node.info.nextIndex[index]--
+							}
 						}
 					})
 				}(peer.String())

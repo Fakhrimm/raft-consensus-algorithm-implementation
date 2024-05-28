@@ -23,19 +23,13 @@ const (
 	Follower
 )
 
-type LogEntry struct {
-	term  int
-	key   string
-	value string
-}
-
 type Info struct {
 	// Persistent
 	id               int
 	leaderId         int
 	currentTerm      int
 	votedFor         int
-	log              []LogEntry
+	log              []comm.Entry
 	clusterAddresses []net.TCPAddr
 	clusterCount     int
 	timeoutAvgTime   int
