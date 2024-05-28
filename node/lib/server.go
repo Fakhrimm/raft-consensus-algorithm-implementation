@@ -47,6 +47,7 @@ func (s *server) GetValue(ctx context.Context, in *comm.GetValueRequest) (*comm.
 }
 
 func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.SetValueResponse, error) {
+	log.Printf("[Transaction] Recevied set request of %v:%v", in.Key, in.Value)
 	var code int32
 	var message string
 	var value string
@@ -56,16 +57,24 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 	if code == 200 {
 		message = "Value set request received"
 
-		// s.Node.info.log = append(s.Node.info.log, comm.Entry{
-		// 	Term: in.,
-		// })
-		value = s.Node.app.Set(in.Key, in.Value)
+		s.Node.info.log = append(s.Node.info.log, comm.Entry{
+			Term:  int32(s.Node.info.currentTerm),
+			Key:   in.Key,
+			Value: in.Value,
+		})
+
+		transactionIndex := len(s.Node.info.log) - 1
+
+		for transactionIndex != s.Node.info.commitIndex {
+		}
 	}
 
+	log.Printf("[Transaction] Set request is completed")
 	return &comm.SetValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
 func (s *server) StrlnValue(ctx context.Context, in *comm.StrlnValueRequest) (*comm.StrlnValueResponse, error) {
+	log.Printf("[Transaction] Recevied strlen request of %v", in.Key)
 	var code int32
 	var message string
 	var value int32
@@ -81,6 +90,7 @@ func (s *server) StrlnValue(ctx context.Context, in *comm.StrlnValueRequest) (*c
 }
 
 func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (*comm.DeleteValueResponse, error) {
+	log.Printf("[Transaction] Recevied delete request of %v", in.Key)
 	var code int32
 	var message string
 	var value string
@@ -96,6 +106,7 @@ func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (
 }
 
 func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (*comm.AppendValueResponse, error) {
+	log.Printf("[Transaction] Recevied append request of %v:%v", in.Key, in.Value)
 	var code int32
 	var message string
 	var value string

@@ -224,7 +224,7 @@ func (node *Node) initHeartbeat() {
 					aliveNodeCount += 1
 				}
 			}
-			log.Printf("[Heartbeat] Total received heartbeat is %v/%v", aliveNodeCount, node.info.clusterCount)
+			// log.Printf("[Heartbeat] Total received heartbeat is %v/%v", aliveNodeCount, node.info.clusterCount)
 
 			if 2*aliveNodeCount <= node.info.clusterCount {
 				// TODO: implement if mayority of server is not alive

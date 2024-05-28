@@ -45,8 +45,8 @@ function Server {
         [string]$Addr,
         [int]$Port = 60000,
         [int]$Timeout = 200,
-        [boolean]$IsJointConsensus = false,
-        [string]$Hostfile = "/config/Hostfile"
+        [boolean]$IsJointConsensus = $false,
+        [string]$Hostfile = "/config/Hostfile",
         [string]$HostfileNew = ""
     )
     if (-not $Addr) {
