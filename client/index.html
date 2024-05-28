@@ -5,43 +5,43 @@
   <title>Raft Protocol</title>
   <link rel="icon" type="image/x-icon" href="/vite.svg">
 </head>
-<body>
-<div style="display: flex; flex-direction: column">
-  <button id="ping" style="width: 10rem">Ping</button>
+<body style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+<div style="display: flex; flex-direction: column; width: max-content">
+  <button id="ping-button" style="width: 100%">Ping</button>
 
-  <div style="display: flex; flex-direction: row">
-    <input type="text" id="get" placeholder="Enter key">
-    <button id="get-button">Get</button>
+  <div style="display: flex; flex-direction: row; justify-content: center; margin-top: 10px">
+    <input type="text" id="get-input" placeholder="Enter key" style="width: 80%;">
+    <button id="get-button" style="width: 20%">Get</button>
   </div>
 
-  <div style="display: flex; flex-direction: row">
-    <input type="text" id="set-key" placeholder="Enter key">
-    <input type="text" id="set-value" placeholder="Enter value">
-    <button id="set-button">Set</button>
+  <div style="display: flex; flex-direction: row; margin-top: 10px">
+    <input type="text" id="set-key-input" placeholder="Enter key" style="width: 40%;">
+    <input type="text" id="set-value-input" placeholder="Enter value" style="width: 40%;">
+    <button id="set-button" style="width: 20%;">Set</button>
   </div>
 
-  <div style="display: flex; flex-direction: row">
-    <input type="text" id="strlen" placeholder="Enter key">
-    <button id="strlen-button">Strlen</button>
+  <div style="display: flex; flex-direction: row; margin-top: 10px">
+    <input type="text" id="strlen-input" placeholder="Enter key" style="width: 80%">
+    <button id="strlen-button" style="width: 20%">Strlen</button>
   </div>
 
-  <div style="display: flex; flex-direction: row">
-    <input type="text" id="del" placeholder="Enter key">
-    <button id="del-button">Del</button>
+  <div style="display: flex; flex-direction: row; margin-top: 10px">
+    <input type="text" id="del-input" placeholder="Enter key" style="width: 80%">
+    <button id="del-button" style="width: 20%">Del</button>
   </div>
 
-  <div style="display: flex; flex-direction: row">
-    <input type="text" id="append-key" placeholder="Enter key">
-    <input type="text" id="append-value" placeholder="Enter value">
-    <button id="append-button">Append</button>
+  <div style="display: flex; flex-direction: row; margin-top: 10px">
+    <input type="text" id="append-key-input" placeholder="Enter key" style="width: 40%">
+    <input type="text" id="append-value-input" placeholder="Enter value" style="width: 40%">
+    <button id="append-button" style="width: 20%">Append</button>
   </div>
 
-  <div style="display: flex; flex-direction: row">
-    <input type="text" id="message" placeholder="Enter message">
-    <button id="send">Send</button>
+  <div style="display: flex; flex-direction: row; margin-top: 10px">
+    <input type="text" id="message-input" placeholder="Enter message" style="width: 80%"/>
+    <button id="send-button" style="width: 20%">Send</button>
   </div>
 </div>
 
-<script type="module" src="/src/main.ts"></script>
+<script type="module" src="./src/main.ts"></script>
 </body>
 </html>

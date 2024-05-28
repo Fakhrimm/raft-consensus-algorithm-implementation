@@ -16,6 +16,12 @@
     "vite": "^5.2.0"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.10.8"
+    "@grpc/grpc-js": "^1.10.8",
+    "@protobuf-ts/grpcweb-transport": "^2.9.4",
+    "@protobuf-ts/runtime": "^2.9.4",
+    "@protobuf-ts/runtime-rpc": "^2.9.4",
+    "@rsbh-nodejs-microservices/protos": "^2.1.0",
+    "google-protobuf": "^3.21.2",
+    "grpc-web": "^1.5.0"
   }
 }
