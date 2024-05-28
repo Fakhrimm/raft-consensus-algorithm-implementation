@@ -158,6 +158,16 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 		}
 		s.Node.info.log = append(s.Node.info.log, newLog)
 
+		if entry.Command == int32(NewOldConfig) {
+			s.Node.info.isJointConsensus = true
+
+			// TODO parse from value to add to the newClusterCount
+
+		} else if entry.Command == int32(NewConfig) {
+			s.Node.info.isJointConsensus = false
+			s.Node.info.clusterCount = s.Node.info.newClusterCount
+			s.Node.info.clusterAddresses = s.Node.info.newClusterAddresses
+		}
 	}
 
 	// If leaderCommit > commitIndex, set commitIndex =
