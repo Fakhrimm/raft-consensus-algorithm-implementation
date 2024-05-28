@@ -46,8 +46,40 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 }
 
 // Raft purposes
+
 func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesRequest) (*comm.AppendEntriesResponse, error) {
-	// TODO: Implement
+	//Reply false if term from leader < currentTerm (§5.1)
+	if in.Term < int32(s.Node.info.currentTerm) {
+		return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
+	}
+
+	// Reset election timer
+	s.Node.onHeartBeat()
+
+	// Reply false if log doesn’t contain an entry at prevLogIndex
+	if len(s.Node.info.log) < int(in.PrevLogIndex) {
+		return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
+	}
+
+	// Reply false if log entry term at prevLogIndex does not match prevLogTerm (§5.3)
+	if s.Node.info.log[in.PrevLogIndex].term != int(in.PrevLogTerm) {
+		return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
+	}
+
+	// If an existing entry conflicts with a new one (same index but different terms)
+	if s.Node.info.log[in.PrevLogIndex+1].term != int(in.Entries[0].Term) {
+		// delete the existing entry and all that follow it
+		s.Node.info.log = s.Node.info.log[:in.PrevLogIndex+1]
+	}
+
+	// Append Entries to Node
+	newLog := LogEntry{
+		term:  int(in.Entries[0].Term),
+		key:   in.Entries[0].Key,
+		value: in.Entries[0].Value,
+	}
+	s.Node.info.log = append(s.Node.info.log, newLog)
+
 	return &comm.AppendEntriesResponse{}, nil
 }
 
