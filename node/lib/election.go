@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 	"math/rand"
+	"net"
 	"sort"
 	"sync"
 	"time"
@@ -54,12 +55,78 @@ func (node *Node) ElectionTimerHandler() {
 
 func (node *Node) startElection() {
 	interval := time.Duration(node.info.timeoutAvgTime) * time.Second / 100 / 3
+	log.Printf("[Election] Starting election for cluster size of %v", node.info.clusterCount)
 
 	node.info.currentTerm++
 	node.state = Candidate
-	vote := 1
+	lastLogIdx := int32(len(node.info.log) - 1)
 
-	log.Printf("[Election] Starting election for cluster size of %v", node.info.clusterCount)
+	// TODO: Test joint consensus & improve concurrency
+	vote := node.sendElection(node.info.clusterAddresses, interval)
+	if node.info.isJointConsensus {
+		voteNew := node.sendElection(node.info.newClusterAddresses, interval)
+
+		if (vote > node.info.clusterCount/2) && (voteNew > node.info.newClusterCount/2) {
+			log.Printf("[Election] Node is now a leader for term %v", node.info.currentTerm)
+			node.info.serverUp = true
+			node.state = Leader
+
+			// Old
+			node.info.matchIndex = make([]int, node.info.clusterCount)
+			node.info.matchIndex[node.info.id] = len(node.info.log) - 1
+
+			node.info.nextIndex = make([]int, node.info.clusterCount)
+			for i := range node.info.nextIndex {
+				node.info.nextIndex[i] = int(lastLogIdx)
+				node.info.matchIndex[i] = -1
+			}
+
+			// New
+			node.info.matchIndexNew = make([]int, node.info.newClusterCount)
+			node.info.matchIndexNew[node.info.id] = len(node.info.log) - 1
+
+			node.info.nextIndexNew = make([]int, node.info.newClusterCount)
+			for i := range node.info.nextIndexNew {
+				node.info.nextIndexNew[i] = int(lastLogIdx)
+				node.info.matchIndexNew[i] = -1
+			}
+			// log.Printf("[Election] matchIndex: %v", node.info.matchIndex)
+			// log.Printf("[Election] nextIndex: %v", node.info.nextIndex)
+
+			node.startAppendEntries()
+		} else {
+			node.state = Follower
+			log.Print("[Election] Not enough vote!")
+		}
+	} else {
+		if vote > node.info.clusterCount/2 {
+			log.Printf("[Election] Node is now a leader for term %v", node.info.currentTerm)
+			node.info.serverUp = true
+			node.state = Leader
+
+			node.info.matchIndex = make([]int, node.info.clusterCount)
+			node.info.matchIndex[node.info.id] = len(node.info.log) - 1
+
+			node.info.nextIndex = make([]int, node.info.clusterCount)
+			for i := range node.info.nextIndex {
+				node.info.nextIndex[i] = int(lastLogIdx)
+				node.info.matchIndex[i] = -1
+			}
+			// log.Printf("[Election] matchIndex: %v", node.info.matchIndex)
+			// log.Printf("[Election] nextIndex: %v", node.info.nextIndex)
+
+			node.startAppendEntries()
+		} else {
+			node.state = Follower
+			log.Print("[Election] Not enough vote!")
+		}
+	}
+
+}
+
+func (node *Node) sendElection(address []net.TCPAddr, interval time.Duration) int {
+	vote := 1
+	length := len(address)
 
 	// Fetch data for voting
 	lastLogIdx := int32(len(node.info.log) - 1)
@@ -70,9 +137,9 @@ func (node *Node) startElection() {
 
 	// Create channels
 	var waitGroup sync.WaitGroup
-	voteCh := make(chan bool, node.info.clusterCount)
+	voteCh := make(chan bool, length)
 
-	for _, peer := range node.info.clusterAddresses {
+	for _, peer := range address {
 		if peer.String() == node.address.String() {
 			continue
 		}
@@ -115,32 +182,12 @@ func (node *Node) startElection() {
 	for granted := range voteCh {
 		if granted {
 			vote += 1
-			log.Printf("[Election] Counting votes %v/%v", vote, node.info.clusterCount)
+			log.Printf("[Election] Counting votes %v/%v", vote, length)
 		}
 	}
-	log.Printf("[Election] Counting completed with %v/%v", vote, node.info.clusterCount)
+	log.Printf("[Election] Counting completed with %v/%v", vote, length)
 
-	if vote > node.info.clusterCount/2 {
-		log.Printf("[Election] Node is now a leader for term %v", node.info.currentTerm)
-		node.info.serverUp = true
-		node.state = Leader
-
-		node.info.matchIndex = make([]int, node.info.clusterCount)
-		node.info.matchIndex[node.info.id] = len(node.info.log) - 1
-
-		node.info.nextIndex = make([]int, node.info.clusterCount)
-		for i := range node.info.nextIndex {
-			node.info.nextIndex[i] = int(lastLogIdx)
-			node.info.matchIndex[i] = -1
-		}
-		// log.Printf("[Election] matchIndex: %v", node.info.matchIndex)
-		// log.Printf("[Election] nextIndex: %v", node.info.nextIndex)
-
-		node.startAppendEntries()
-	} else {
-		node.state = Follower
-		log.Print("[Election] Not enough vote!")
-	}
+	return vote
 }
 
 func (node *Node) startAppendEntries() {
@@ -150,102 +197,130 @@ func (node *Node) startAppendEntries() {
 
 	for node.state == Leader {
 		for range ticker.C {
+			aliveNode := 0
+			aliveNode = node.sendAppendEntries(node.info.clusterAddresses, interval)
 
-			var waitGroup sync.WaitGroup
-			heartbeatCh := make(chan bool, node.info.clusterCount)
+			// TODO: Test joint consensus & improve by concurrency
+			if node.info.isJointConsensus {
+				newAliveNode := 0
+				newAliveNode = node.sendAppendEntries(node.info.newClusterAddresses, interval)
 
-			for index, peer := range node.info.clusterAddresses {
-				if peer.String() == node.address.String() {
-					continue
+				if (2*aliveNode <= node.info.clusterCount) && (2*newAliveNode <= node.info.newClusterCount) {
+					node.info.serverUp = false
+				} else {
+					node.updateMajority()
+					node.info.serverUp = true
 				}
-				// log.Printf("[Heartbeat] Sending heartbeat to node %v: %v", index, peer)
-
-				prevLogIndex := max(node.info.nextIndex[index]-1, -1)
-				prevLogTerm := int32(0)
-				if prevLogIndex > -1 {
-					prevLogTerm = node.info.log[prevLogIndex].Term
-				}
-
-				// TODO: Review, I don't think this is efficient
-				length := len(node.info.log) - prevLogIndex - 1
-
-				sentEntries := make([]*comm.Entry, length)
-				for i := 0; i < length; i++ {
-					sentEntries[i] = &comm.Entry{
-						Term:    node.info.log[prevLogIndex+1+i].Term,
-						Key:     node.info.log[prevLogIndex+1+i].Key,
-						Value:   node.info.log[prevLogIndex+1+i].Value,
-						Command: node.info.log[prevLogIndex+1+i].Command,
-					}
-				}
-
-				data := &comm.AppendEntriesRequest{
-					Term:         int32(node.info.currentTerm),
-					LeaderId:     int32(node.info.id),
-					PrevLogTerm:  prevLogTerm,
-					PrevLogIndex: int32(prevLogIndex),
-					LeaderCommit: int32(node.info.commitIndex),
-					Entries:      sentEntries,
-				}
-
-				// log.Printf("[Heartbeat] data to send: %v", data)
-				// log.Printf("[Heartbeat] data term: %v", data.Term)
-				// log.Printf("[Heartbeat] data leader id: %v", data.LeaderId)
-				// log.Printf("[Heartbeat] data entries: %v", data.Entries)
-
-				waitGroup.Add(1)
-				ctx, cancel := context.WithTimeout(context.Background(), 2*interval)
-
-				// TODO: Count failed heartbeats to indicate majority down
-				go func(peerAddr string) {
-					defer cancel()
-					defer waitGroup.Done()
-
-					// TODO: Implement append entries functions
-					node.Call(peer.String(), func() {
-						response, err := node.grpcClient.AppendEntries(ctx, data)
-						if err != nil {
-							log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
-							heartbeatCh <- false
-						} else {
-							if response.Success {
-								node.info.matchIndex[index] = int(prevLogIndex) + len(sentEntries)
-								node.info.nextIndex[index] = node.info.matchIndex[index] + 1
-							} else {
-								node.info.nextIndex[index]--
-							}
-							heartbeatCh <- true
-						}
-					})
-				}(peer.String())
-			}
-			go func() {
-				waitGroup.Wait()
-				close(heartbeatCh)
-			}()
-
-			aliveNodeCount := 1
-			for getResponse := range heartbeatCh {
-				if getResponse {
-					aliveNodeCount += 1
-				}
-			}
-			// log.Printf("[Heartbeat] Total received heartbeat is %v/%v", aliveNodeCount, node.info.clusterCount)
-
-			if 2*aliveNodeCount <= node.info.clusterCount {
-				// TODO: implement if mayority of server is not alive
-				node.info.serverUp = false
 			} else {
-				node.updateMajority()
-				node.info.serverUp = true
+				// log.Printf("[Heartbeat] Total received heartbeat is %v/%v", aliveNodeCount, node.info.clusterCount)
+				if 2*aliveNode <= node.info.clusterCount {
+					node.info.serverUp = false
+				} else {
+					node.updateMajority()
+					node.info.serverUp = true
+				}
 			}
 		}
 	}
 }
 
+func (node *Node) sendAppendEntries(address []net.TCPAddr, interval time.Duration) int {
+	var waitGroup sync.WaitGroup
+	heartbeatCh := make(chan bool, node.info.clusterCount)
+
+	for index, peer := range node.info.clusterAddresses {
+		if peer.String() == node.address.String() {
+			continue
+		}
+		// log.Printf("[Heartbeat] Sending heartbeat to node %v: %v", index, peer)
+
+		prevLogIndex := max(node.info.nextIndex[index]-1, -1)
+		prevLogTerm := int32(0)
+		if prevLogIndex > -1 {
+			prevLogTerm = node.info.log[prevLogIndex].Term
+		}
+
+		// TODO: Review, I don't think this is efficient
+		length := len(node.info.log) - prevLogIndex - 1
+
+		sentEntries := make([]*comm.Entry, length)
+		for i := 0; i < length; i++ {
+			sentEntries[i] = &comm.Entry{
+				Term:    node.info.log[prevLogIndex+1+i].Term,
+				Key:     node.info.log[prevLogIndex+1+i].Key,
+				Value:   node.info.log[prevLogIndex+1+i].Value,
+				Command: node.info.log[prevLogIndex+1+i].Command,
+			}
+		}
+
+		data := &comm.AppendEntriesRequest{
+			Term:         int32(node.info.currentTerm),
+			LeaderId:     int32(node.info.id),
+			PrevLogTerm:  prevLogTerm,
+			PrevLogIndex: int32(prevLogIndex),
+			LeaderCommit: int32(node.info.commitIndex),
+			Entries:      sentEntries,
+		}
+
+		// log.Printf("[Heartbeat] data to send: %v", data)
+		// log.Printf("[Heartbeat] data term: %v", data.Term)
+		// log.Printf("[Heartbeat] data leader id: %v", data.LeaderId)
+		// log.Printf("[Heartbeat] data entries: %v", data.Entries)
+
+		waitGroup.Add(1)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*interval)
+
+		go func(peerAddr string) {
+			defer cancel()
+			defer waitGroup.Done()
+
+			node.Call(peer.String(), func() {
+				response, err := node.grpcClient.AppendEntries(ctx, data)
+				if err != nil {
+					log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
+					heartbeatCh <- false
+				} else {
+					if response.Success {
+						node.info.matchIndex[index] = int(prevLogIndex) + len(sentEntries)
+						node.info.nextIndex[index] = node.info.matchIndex[index] + 1
+					} else {
+						node.info.nextIndex[index]--
+					}
+					heartbeatCh <- true
+				}
+			})
+		}(peer.String())
+	}
+	go func() {
+		waitGroup.Wait()
+		close(heartbeatCh)
+	}()
+
+	aliveNodeCount := 1
+	for getResponse := range heartbeatCh {
+		if getResponse {
+			aliveNodeCount += 1
+		}
+	}
+
+	return aliveNodeCount
+}
+
 func (node *Node) updateMajority() {
+	majority := node.getMajority(node.info.matchIndex, node.info.clusterCount)
+
+	// TODO: Test joint consensus & improve concurrency
+	if node.info.isJointConsensus {
+		newMajority := node.getMajority(node.info.matchIndexNew, node.info.newClusterCount)
+		node.CommitLogEntries(min(majority, newMajority))
+	} else {
+		node.CommitLogEntries(majority)
+	}
+}
+
+func (node *Node) getMajority(matchArray []int, clusterCount int) int {
 	matchIndex := make(map[int]int)
-	for _, index := range node.info.matchIndex {
+	for _, index := range matchArray {
 		if matchIndex[index] == 0 {
 			matchIndex[index] = 1
 		} else {
@@ -260,17 +335,17 @@ func (node *Node) updateMajority() {
 	}
 	sort.Sort(sort.Reverse(sort.IntSlice(keys)))
 
-	majority := node.info.clusterCount / 2
+	majority := clusterCount / 2
 	sum := 0
 
 	for _, key := range keys {
 		sum += matchIndex[key]
 		if sum > majority {
 			// log.Printf("[Transaction] updating majority keys: %v", keys)
-			node.CommitLogEntries(key)
-			break
+			return key
 		}
 	}
+	return 0
 }
 
 func (node *Node) onHeartBeat() {

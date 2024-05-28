@@ -305,6 +305,7 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 	return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: true}, nil
 }
 
+// TODO: handle joint election
 func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (*comm.RequestVoteResponse, error) {
 	log.Printf("")
 

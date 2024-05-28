@@ -52,8 +52,10 @@ type Info struct {
 	serverUp    bool
 
 	// Leaders
-	nextIndex  []int
-	matchIndex []int
+	nextIndex     []int
+	matchIndex    []int
+	nextIndexNew  []int
+	matchIndexNew []int
 }
 
 type Node struct {
