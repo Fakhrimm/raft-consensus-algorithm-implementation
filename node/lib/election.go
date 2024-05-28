@@ -225,32 +225,36 @@ func (node *Node) initHeartbeat() {
 			if 2*aliveNodeCount <= node.info.clusterCount {
 				// TODO: implement if mayority of server is not alive
 			} else {
-				matchIndex := make(map[int]int)
-				for _, index := range node.info.matchIndex {
-					if matchIndex[index] == 0 {
-						matchIndex[index] = 1
-					} else {
-						matchIndex[index]++
-					}
-				}
-
-				// sort matchIndex descending by the key
-				keys := make([]int, 0, len(matchIndex))
-				for k := range matchIndex {
-					keys = append(keys, k)
-				}
-				sort.Sort(sort.Reverse(sort.IntSlice(keys)))
-
-				majority := node.info.clusterCount / 2
-				sum := 0
-				for _, key := range keys {
-					sum += matchIndex[key]
-					if sum > majority {
-						node.CommitLogEntries(key)
-						break
-					}
-				}
+				node.updateMajority()
 			}
+		}
+	}
+}
+
+func (node *Node) updateMajority() {
+	matchIndex := make(map[int]int)
+	for _, index := range node.info.matchIndex {
+		if matchIndex[index] == 0 {
+			matchIndex[index] = 1
+		} else {
+			matchIndex[index]++
+		}
+	}
+
+	// sort matchIndex descending by the key
+	keys := make([]int, 0, len(matchIndex))
+	for k := range matchIndex {
+		keys = append(keys, k)
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(keys)))
+
+	majority := node.info.clusterCount / 2
+	sum := 0
+	for _, key := range keys {
+		sum += matchIndex[key]
+		if sum > majority {
+			node.CommitLogEntries(key)
+			break
 		}
 	}
 }
