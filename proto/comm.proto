@@ -19,6 +19,8 @@ service CommService {
   rpc RequestVote (RequestVoteRequest) returns (RequestVoteResponse);
 }
 
+// TODO : implement dynamic address
+
 //  Basic
 message BasicRequest {}
 message BasicResponse {

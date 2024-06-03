@@ -2,7 +2,7 @@ import "./style.css";
 import { CommServiceClient } from "./grpc/comm.client";
 
 import {
-  BasicRequest,
+  BasicRequest, GetValueRequest, SetValueRequest,
 } from "./grpc/comm";
 import {
   pingButton,
@@ -11,14 +11,14 @@ import {
   strlenButton,
   delButton,
   appendButton,
-  sendButton
+  sendButton, getInput, setKeyInput, setValueInput
 } from "./binding.ts";
 import { GrpcWebFetchTransport } from "@protobuf-ts/grpcweb-transport";
 
 
 // grpc
 const transport = new GrpcWebFetchTransport({
-  baseUrl: "https://10.1.78.161:60000/",
+  baseUrl: "http://localhost:50052/",
   format: "binary",
 });
 
@@ -39,11 +39,30 @@ pingButton.onclick = async () => {
 }
 
 getButton.onclick = async () => {
-  // TODO
+  const request = GetValueRequest.create({
+    key: getInput.value
+  });
+
+  try {
+    const response = await client.getValue(request);
+    console.log(response);
+  } catch (e) {
+    console.log(e);
+  }
 }
 
 setButton.onclick = async () => {
-  // TODO
+  const request = SetValueRequest.create({
+    key: setKeyInput.value,
+    value: setValueInput.value
+  });
+
+  try {
+    const response = await client.setValue(request);
+    console.log(response);
+  } catch (e) {
+    console.log(e);
+  }
 }
 
 strlenButton.onclick = async () => {
