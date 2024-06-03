@@ -309,7 +309,7 @@ class BasicRequest$Type extends MessageType<BasicRequest> {
             reflectionMergePartial<BasicRequest>(this, message, value);
         return message;
     }
-    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: BasicRequest): BasicRequest {
+    internalBinaryRead(_reader: IBinaryReader, _length: number, _options: BinaryReadOptions, target?: BasicRequest): BasicRequest {
         return target ?? this.create();
     }
     internalBinaryWrite(message: BasicRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
