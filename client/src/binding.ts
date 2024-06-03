@@ -1,4 +1,6 @@
 // ui binding
+const addressInput = document.getElementById("address-input") as HTMLInputElement;
+
 const pingButton = document.getElementById("ping-button") as HTMLButtonElement;
 
 const getInput = document.getElementById("get-input") as HTMLInputElement;
@@ -22,6 +24,7 @@ const messageInput = document.getElementById("message-input") as HTMLInputElemen
 const sendButton = document.getElementById("send-button") as HTMLButtonElement;
 
 export {
+  addressInput,
   pingButton,
   getInput,
   getButton,

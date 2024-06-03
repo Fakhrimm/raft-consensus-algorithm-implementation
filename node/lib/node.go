@@ -4,9 +4,12 @@ import (
 	"Node/grpc/comm"
 	"bufio"
 	"context"
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"log"
 	"net"
+	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -111,6 +114,29 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, 
 	node.state = Follower
 
 	go node.ElectionTimerHandler()
+
+	// Start the grpc-web server
+	grpcWebServer := grpcweb.WrapServer(
+		node.grpcServer,
+		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
+	)
+
+	// 0.0.0.0:60000 (grpc) -> 0.0.0.0:70000 (grpc-web) (added with 10000)
+
+	addr := strings.Split(node.address.String(), ":")
+	port, _ := strconv.Atoi(addr[1])
+	port -= 10000
+	addr[1] = strconv.Itoa(port)
+
+	srv := &http.Server{
+		Handler: grpcWebServer,
+		Addr:    strings.Join(addr, ":"),
+	}
+	log.Printf("grpc-web server listening at %v", srv.Addr)
+	if err := srv.ListenAndServe(); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+
 }
 
 func (node *Node) InitServer() {

@@ -15,7 +15,7 @@ function Proto {
     Remove-Item -Path "grpc/*" -Recurse -Force
     protoc --go_out=. --go-grpc_out=. proto/comm.proto
 
-    $destDirs = @("node/grpc", "controller/grpc", "server/grpc")
+    $destDirs = @("node/grpc", "controller/grpc")
 
     foreach ($destDir in $destDirs) {
         if (-Not (Test-Path $destDir)) {

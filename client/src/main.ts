@@ -11,22 +11,33 @@ import {
   strlenButton,
   delButton,
   appendButton,
-  sendButton, getInput, setKeyInput, setValueInput
+  sendButton, getInput, setKeyInput, setValueInput, addressInput
 } from "./binding.ts";
 import { GrpcWebFetchTransport } from "@protobuf-ts/grpcweb-transport";
 
 
 // grpc
-const transport = new GrpcWebFetchTransport({
-  baseUrl: "http://localhost:50052/",
+let transport = new GrpcWebFetchTransport({
+  baseUrl: "http://" + addressInput.value || "0.0.0.0:60000",
   format: "binary",
 });
 
-const client = new CommServiceClient(
+let client = new CommServiceClient(
   transport
 );
 
 // event binding
+addressInput.onchange = () => {
+  transport = new GrpcWebFetchTransport({
+    baseUrl: "http://" + addressInput.value,
+    format: "binary",
+  });
+
+  client = new CommServiceClient(
+    transport
+  );
+}
+
 pingButton.onclick = async () => {
   const request = BasicRequest.create({ value: "ping" });
 
