@@ -20,8 +20,7 @@ const appendKeyInput = document.getElementById("append-key-input") as HTMLInputE
 const appendValueInput = document.getElementById("append-value-input") as HTMLInputElement;
 const appendButton = document.getElementById("append-button") as HTMLButtonElement;
 
-const messageInput = document.getElementById("message-input") as HTMLInputElement;
-const sendButton = document.getElementById("send-button") as HTMLButtonElement;
+const logSection = document.getElementById("log-section") as HTMLDivElement;
 
 export {
   addressInput,
@@ -38,6 +37,5 @@ export {
   appendKeyInput,
   appendValueInput,
   appendButton,
-  messageInput,
-  sendButton
+  logSection,
 }

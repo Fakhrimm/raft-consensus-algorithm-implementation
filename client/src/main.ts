@@ -2,7 +2,9 @@ import "./style.css";
 import { CommServiceClient } from "./grpc/comm.client";
 
 import {
-  BasicRequest, GetValueRequest, SetValueRequest,
+  AppendValueRequest,
+  BasicRequest, DeleteValueRequest, GetValueRequest, SetValueRequest,
+  StrlnValueRequest,
 } from "./grpc/comm";
 import {
   pingButton,
@@ -11,7 +13,12 @@ import {
   strlenButton,
   delButton,
   appendButton,
-  sendButton, getInput, setKeyInput, setValueInput, addressInput
+  getInput, setKeyInput, setValueInput, addressInput,
+  strlenInput,
+  appendKeyInput,
+  appendValueInput,
+  logSection,
+  delInput
 } from "./binding.ts";
 import { GrpcWebFetchTransport } from "@protobuf-ts/grpcweb-transport";
 
@@ -25,6 +32,16 @@ let transport = new GrpcWebFetchTransport({
 let client = new CommServiceClient(
   transport
 );
+
+// Update log functionality
+function updateLog(message: string) {
+  const logs = logSection;
+  if (logs) {
+    const newLogEntry = document.createElement('div');
+    newLogEntry.textContent = `${new Date().toLocaleTimeString()} - ${addressInput.value} - ${message}`;
+    logs.insertBefore(newLogEntry, logSection.firstChild);
+  }
+}
 
 // event binding
 addressInput.onchange = () => {
@@ -43,9 +60,10 @@ pingButton.onclick = async () => {
 
   try {
     const response = await client.ping(request);
-    console.log(response);
+    updateLog(response.response.message)
   } catch (e) {
     console.log(e);
+    updateLog("An error occured when trying to PING, check console")
   }
 }
 
@@ -56,9 +74,17 @@ getButton.onclick = async () => {
 
   try {
     const response = await client.getValue(request);
-    console.log(response);
+    console.log(response)
+    if (getInput.value && response.response.value) {
+      updateLog(response.response.message + " " + getInput.value + " = " + response.response.value)
+    } else if (!getInput.value) {
+      updateLog(response.response.message + ", but no key was used")
+    } else {
+      updateLog(response.response.message + " " + getInput.value + ", but no value was found")
+    }
   } catch (e) {
     console.log(e);
+    updateLog("An error occured when trying to GET value, check console")
   }
 }
 
@@ -70,24 +96,72 @@ setButton.onclick = async () => {
 
   try {
     const response = await client.setValue(request);
-    console.log(response);
+    if (setKeyInput.value && setValueInput.value) {
+      updateLog(response.response.message + " " + setKeyInput.value + " = " + setValueInput.value)
+    } else if (!setKeyInput.value) {
+      updateLog(response.response.message + ", but no key was used")
+    } else {
+      updateLog(response.response.message + ", but no value was used")
+    }
   } catch (e) {
     console.log(e);
+    updateLog("An error occured when trying to SET value, check console")
   }
 }
 
 strlenButton.onclick = async () => {
-  // TODO
+  const request = StrlnValueRequest.create({
+    key: strlenInput.value
+  })
+
+  try {
+    const response = await client.strlnValue(request)
+    if (strlenInput.value) {
+      updateLog(response.response.message + " length of " + strlenInput.value + " = " + response.response.value)
+    } else {
+      updateLog(response.response.message + ", but no key was used")
+    }
+  } catch (e) {
+    console.log(e)
+    updateLog("An error occured when trying to STRLEN key, check console")
+  }
 }
 
 delButton.onclick = async () => {
-  // TODO
+  const request = DeleteValueRequest.create({
+    key: delInput.value
+  })
+
+  try {
+    const response = await client.deleteValue(request)
+    if (delInput.value) {
+      updateLog(response.response.message + ", deleted "+ delInput.value)
+    } else {
+      updateLog(response.response.message + ", but no key was used")
+    }
+  } catch (e) {
+    console.log(e)
+    updateLog("An error occured when trying to DELETE key, check console")
+  }
 }
 
 appendButton.onclick = async () => {
-  // TODO
-}
+  const request = AppendValueRequest.create({
+    key: appendKeyInput.value,
+    value: appendValueInput.value,
+  })
 
-sendButton.onclick = async () => {
-  // TODO
+  try {
+    const response = await client.appendValue(request)
+    if (appendKeyInput.value && appendValueInput.value) {
+      updateLog(response.response.message + " " + appendKeyInput.value)
+    } else if (!appendKeyInput.value) {
+      updateLog(response.response.message + ", but no key was used")
+    } else {
+      updateLog(response.response.message + ", but no value was used")
+    }
+  } catch (e) {
+    console.log(e)
+    updateLog("An error occured when trying to APPEND value, check console")
+  }
 }
