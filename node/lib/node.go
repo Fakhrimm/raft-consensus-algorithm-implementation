@@ -292,6 +292,7 @@ func (node *Node) CommitLogEntries(newCommitIndex int) {
 }
 
 func (node *Node) appendToLog(newEntry comm.Entry) {
+	node.mutex.Lock()
 	node.info.log = append(node.info.log, newEntry)
 
 	node.info.matchIndex[node.info.id] = len(node.info.log) - 1
@@ -301,6 +302,7 @@ func (node *Node) appendToLog(newEntry comm.Entry) {
 			node.info.nextIndex[index]++
 		}
 	}
+	node.mutex.Unlock()
 }
 
 func (node *Node) Stop() {

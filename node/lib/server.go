@@ -5,7 +5,6 @@ import (
 	"context"
 	"log"
 	"net"
-	"strings"
 )
 
 type server struct {
@@ -105,7 +104,7 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 	if code == 200 {
 		message = "Value set request completed"
 
-		s.Node.info.log = append(s.Node.info.log, comm.Entry{
+		s.Node.appendToLog(comm.Entry{
 			Term:    int32(s.Node.info.currentTerm),
 			Key:     in.Key,
 			Value:   in.Value,
@@ -113,17 +112,8 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 		})
 
 		transactionIndex := len(s.Node.info.log) - 1
-		s.Node.info.matchIndex[s.Node.info.id] = len(s.Node.info.log) - 1
-
-		for index, nextIndex := range s.Node.info.nextIndex {
-			if nextIndex == s.Node.info.matchIndex[index] {
-				s.Node.info.nextIndex[index]++
-			}
-		}
-		// log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
-		// log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
-
 		for transactionIndex != s.Node.info.commitIndex {
+			log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
 		}
 	}
 
@@ -156,7 +146,7 @@ func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (
 	if code == 200 {
 		message = "Value delete request completed"
 
-		s.Node.info.log = append(s.Node.info.log, comm.Entry{
+		s.Node.appendToLog(comm.Entry{
 			Term:    int32(s.Node.info.currentTerm),
 			Key:     in.Key,
 			Value:   "",
@@ -164,17 +154,8 @@ func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (
 		})
 
 		transactionIndex := len(s.Node.info.log) - 1
-		s.Node.info.matchIndex[s.Node.info.id] = len(s.Node.info.log) - 1
-
-		for index, nextIndex := range s.Node.info.nextIndex {
-			if nextIndex == s.Node.info.matchIndex[index] {
-				s.Node.info.nextIndex[index]++
-			}
-		}
-		// log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
-		// log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
-
 		for transactionIndex != s.Node.info.commitIndex {
+			log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
 		}
 	}
 
@@ -192,7 +173,7 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 	if code == 200 {
 		message = "Value append request completed"
 
-		s.Node.info.log = append(s.Node.info.log, comm.Entry{
+		s.Node.appendToLog(comm.Entry{
 			Term:    int32(s.Node.info.currentTerm),
 			Key:     in.Key,
 			Value:   in.Value,
@@ -200,17 +181,8 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 		})
 
 		transactionIndex := len(s.Node.info.log) - 1
-		s.Node.info.matchIndex[s.Node.info.id] = len(s.Node.info.log) - 1
-
-		for index, nextIndex := range s.Node.info.nextIndex {
-			if nextIndex == s.Node.info.matchIndex[index] {
-				s.Node.info.nextIndex[index]++
-			}
-		}
-		// log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
-		// log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
-
 		for transactionIndex != s.Node.info.commitIndex {
+			log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
 		}
 	}
 
@@ -244,7 +216,7 @@ func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembership
 		s.Node.info.isJointConsensus = true
 
 		// Append entry to log
-		s.Node.info.log = append(s.Node.info.log, comm.Entry{
+		s.Node.appendToLog(comm.Entry{
 			Term:    int32(s.Node.info.currentTerm),
 			Value:   in.NewClusterAddresses,
 			Command: int32(NewOldConfig),
@@ -252,26 +224,6 @@ func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembership
 	}
 
 	return &comm.ChangeMembershipResponse{Code: code, Message: message, Value: in.NewClusterAddresses}, nil
-}
-
-func parseAddresses(clusterAddresses string) []net.TCPAddr {
-	var clusterAddressesTcp []net.TCPAddr
-
-	if clusterAddresses != "" {
-
-		addresses := strings.Split(clusterAddresses, ",")
-
-		for _, address := range addresses {
-			a, err := net.ResolveTCPAddr("tcp", address)
-			if err != nil {
-				log.Fatalf("Invalid address: %v", address)
-			}
-
-			clusterAddressesTcp = append(clusterAddressesTcp, *a)
-		}
-	}
-
-	return clusterAddressesTcp
 }
 
 // Raft purposes

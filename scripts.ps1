@@ -64,12 +64,12 @@ function Server {
         $command += " -isjointconsensus"
     }
 
-    Write-Host $command
+    # Write-Host $command
     if (1 -eq 2) {
-        Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k", $command -NoNewWindow
+        Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k", $command -NoNewWindow > $null
     }
     else {
-        StartWithWindowsTerminal -Command $command "${Addr}:${Port}"
+        StartWithWindowsTerminal -Command $command "${Addr}:${Port}" > $null
     }
     Pop-Location
 }
