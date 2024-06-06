@@ -101,7 +101,13 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, 
 
 	node.info.clusterAddresses, node.info.clusterCount = node.ReadServerList(hostfile)
 	log.Printf("Check: %v", node.info.clusterAddresses)
-	node.info.newClusterAddresses, node.info.newClusterCount = node.ReadServerList(newHostfile)
+
+	if isJointConsensus {
+		node.info.newClusterAddresses, node.info.newClusterCount = node.ReadServerList(newHostfile)
+	} else {
+		node.info.newClusterAddresses = []net.TCPAddr{}
+		node.info.newClusterCount = 0
+	}
 	node.info.isJointConsensus = isJointConsensus
 
 	node.info.timeoutAvgTime = timeoutAvgTime
