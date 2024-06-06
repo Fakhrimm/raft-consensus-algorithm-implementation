@@ -51,7 +51,7 @@ func (c *Controller) Run() {
 			continue
 		}
 
-		switch parts[0] {
+		switch strings.ToLower(parts[0]) {
 		case "exit":
 			log.Println("Exiting...")
 			c.Running = false
@@ -62,6 +62,12 @@ func (c *Controller) Run() {
 				continue
 			}
 			c.Ping(parts[1])
+		case "status":
+			if length < 2 {
+				log.Println("Usage: status <address>")
+				continue
+			}
+			c.Status(parts[1])
 		case "get":
 			if length < 3 {
 				log.Println("Usage: get <address> <key>")

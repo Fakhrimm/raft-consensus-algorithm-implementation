@@ -11,7 +11,6 @@ import type { IBinaryReader } from "@protobuf-ts/runtime";
 import type { PartialMessage } from "@protobuf-ts/runtime";
 import { reflectionMergePartial } from "@protobuf-ts/runtime";
 import { MessageType } from "@protobuf-ts/runtime";
-
 /**
  *  Basic
  *
@@ -274,11 +273,7 @@ export interface RequestVoteResponse {
  */
 export interface ChangeMembershipRequest {
     /**
-     * @generated from protobuf field: string clusterAddresses = 1;
-     */
-    clusterAddresses: string;
-    /**
-     * @generated from protobuf field: string newClusterAddresses = 2;
+     * @generated from protobuf field: string newClusterAddresses = 1;
      */
     newClusterAddresses: string;
 }
@@ -310,7 +305,7 @@ class BasicRequest$Type extends MessageType<BasicRequest> {
             reflectionMergePartial<BasicRequest>(this, message, value);
         return message;
     }
-    internalBinaryRead(_reader: IBinaryReader, _length: number, _options: BinaryReadOptions, target?: BasicRequest): BasicRequest {
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: BasicRequest): BasicRequest {
         return target ?? this.create();
     }
     internalBinaryWrite(message: BasicRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
@@ -1288,13 +1283,11 @@ export const RequestVoteResponse = new RequestVoteResponse$Type();
 class ChangeMembershipRequest$Type extends MessageType<ChangeMembershipRequest> {
     constructor() {
         super("comm.ChangeMembershipRequest", [
-            { no: 1, name: "clusterAddresses", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 2, name: "newClusterAddresses", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 1, name: "newClusterAddresses", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<ChangeMembershipRequest>): ChangeMembershipRequest {
         const message = globalThis.Object.create((this.messagePrototype!));
-        message.clusterAddresses = "";
         message.newClusterAddresses = "";
         if (value !== undefined)
             reflectionMergePartial<ChangeMembershipRequest>(this, message, value);
@@ -1305,10 +1298,7 @@ class ChangeMembershipRequest$Type extends MessageType<ChangeMembershipRequest> 
         while (reader.pos < end) {
             let [fieldNo, wireType] = reader.tag();
             switch (fieldNo) {
-                case /* string clusterAddresses */ 1:
-                    message.clusterAddresses = reader.string();
-                    break;
-                case /* string newClusterAddresses */ 2:
+                case /* string newClusterAddresses */ 1:
                     message.newClusterAddresses = reader.string();
                     break;
                 default:
@@ -1323,12 +1313,9 @@ class ChangeMembershipRequest$Type extends MessageType<ChangeMembershipRequest> 
         return message;
     }
     internalBinaryWrite(message: ChangeMembershipRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
-        /* string clusterAddresses = 1; */
-        if (message.clusterAddresses !== "")
-            writer.tag(1, WireType.LengthDelimited).string(message.clusterAddresses);
-        /* string newClusterAddresses = 2; */
+        /* string newClusterAddresses = 1; */
         if (message.newClusterAddresses !== "")
-            writer.tag(2, WireType.LengthDelimited).string(message.newClusterAddresses);
+            writer.tag(1, WireType.LengthDelimited).string(message.newClusterAddresses);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -1407,6 +1394,7 @@ export const ChangeMembershipResponse = new ChangeMembershipResponse$Type();
  */
 export const CommService = new ServiceType("comm.CommService", [
     { name: "Ping", options: {}, I: BasicRequest, O: BasicResponse },
+    { name: "Status", options: {}, I: BasicRequest, O: BasicResponse },
     { name: "Stop", options: {}, I: BasicRequest, O: BasicResponse },
     { name: "GetValue", options: {}, I: GetValueRequest, O: GetValueResponse },
     { name: "SetValue", options: {}, I: SetValueRequest, O: SetValueResponse },

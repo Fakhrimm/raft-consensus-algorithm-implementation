@@ -52,14 +52,14 @@ type Info struct {
 
 	// Volatile
 	commitIndex int
-	lastApplied int
-	serverUp    bool
+	// lastApplied int
 
 	// Leaders
 	nextIndex     []int
 	matchIndex    []int
 	nextIndexNew  []int
 	matchIndexNew []int
+	serverUp      bool
 }
 
 type Node struct {
@@ -249,6 +249,7 @@ func (node *Node) CheckSanity() {
 }
 
 func (node *Node) CommitLogEntries(newCommitIndex int) {
+
 	for i := node.info.commitIndex + 1; i <= newCommitIndex; i++ {
 		entry := node.info.log[i]
 

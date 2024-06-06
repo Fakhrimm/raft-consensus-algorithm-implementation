@@ -34,6 +34,10 @@ export interface ICommServiceClient {
      */
     ping(input: BasicRequest, options?: RpcOptions): UnaryCall<BasicRequest, BasicResponse>;
     /**
+     * @generated from protobuf rpc: Status(comm.BasicRequest) returns (comm.BasicResponse);
+     */
+    status(input: BasicRequest, options?: RpcOptions): UnaryCall<BasicRequest, BasicResponse>;
+    /**
      * @generated from protobuf rpc: Stop(comm.BasicRequest) returns (comm.BasicResponse);
      */
     stop(input: BasicRequest, options?: RpcOptions): UnaryCall<BasicRequest, BasicResponse>;
@@ -89,52 +93,59 @@ export class CommServiceClient implements ICommServiceClient, ServiceInfo {
         return stackIntercept<BasicRequest, BasicResponse>("unary", this._transport, method, opt, input);
     }
     /**
+     * @generated from protobuf rpc: Status(comm.BasicRequest) returns (comm.BasicResponse);
+     */
+    status(input: BasicRequest, options?: RpcOptions): UnaryCall<BasicRequest, BasicResponse> {
+        const method = this.methods[1], opt = this._transport.mergeOptions(options);
+        return stackIntercept<BasicRequest, BasicResponse>("unary", this._transport, method, opt, input);
+    }
+    /**
      * @generated from protobuf rpc: Stop(comm.BasicRequest) returns (comm.BasicResponse);
      */
     stop(input: BasicRequest, options?: RpcOptions): UnaryCall<BasicRequest, BasicResponse> {
-        const method = this.methods[1], opt = this._transport.mergeOptions(options);
+        const method = this.methods[2], opt = this._transport.mergeOptions(options);
         return stackIntercept<BasicRequest, BasicResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: GetValue(comm.GetValueRequest) returns (comm.GetValueResponse);
      */
     getValue(input: GetValueRequest, options?: RpcOptions): UnaryCall<GetValueRequest, GetValueResponse> {
-        const method = this.methods[2], opt = this._transport.mergeOptions(options);
+        const method = this.methods[3], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetValueRequest, GetValueResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: SetValue(comm.SetValueRequest) returns (comm.SetValueResponse);
      */
     setValue(input: SetValueRequest, options?: RpcOptions): UnaryCall<SetValueRequest, SetValueResponse> {
-        const method = this.methods[3], opt = this._transport.mergeOptions(options);
+        const method = this.methods[4], opt = this._transport.mergeOptions(options);
         return stackIntercept<SetValueRequest, SetValueResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: StrlnValue(comm.StrlnValueRequest) returns (comm.StrlnValueResponse);
      */
     strlnValue(input: StrlnValueRequest, options?: RpcOptions): UnaryCall<StrlnValueRequest, StrlnValueResponse> {
-        const method = this.methods[4], opt = this._transport.mergeOptions(options);
+        const method = this.methods[5], opt = this._transport.mergeOptions(options);
         return stackIntercept<StrlnValueRequest, StrlnValueResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: DeleteValue(comm.DeleteValueRequest) returns (comm.DeleteValueResponse);
      */
     deleteValue(input: DeleteValueRequest, options?: RpcOptions): UnaryCall<DeleteValueRequest, DeleteValueResponse> {
-        const method = this.methods[5], opt = this._transport.mergeOptions(options);
+        const method = this.methods[6], opt = this._transport.mergeOptions(options);
         return stackIntercept<DeleteValueRequest, DeleteValueResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: AppendValue(comm.AppendValueRequest) returns (comm.AppendValueResponse);
      */
     appendValue(input: AppendValueRequest, options?: RpcOptions): UnaryCall<AppendValueRequest, AppendValueResponse> {
-        const method = this.methods[6], opt = this._transport.mergeOptions(options);
+        const method = this.methods[7], opt = this._transport.mergeOptions(options);
         return stackIntercept<AppendValueRequest, AppendValueResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: ChangeMembership(comm.ChangeMembershipRequest) returns (comm.ChangeMembershipResponse);
      */
     changeMembership(input: ChangeMembershipRequest, options?: RpcOptions): UnaryCall<ChangeMembershipRequest, ChangeMembershipResponse> {
-        const method = this.methods[7], opt = this._transport.mergeOptions(options);
+        const method = this.methods[8], opt = this._transport.mergeOptions(options);
         return stackIntercept<ChangeMembershipRequest, ChangeMembershipResponse>("unary", this._transport, method, opt, input);
     }
     /**
@@ -143,14 +154,14 @@ export class CommServiceClient implements ICommServiceClient, ServiceInfo {
      * @generated from protobuf rpc: AppendEntries(comm.AppendEntriesRequest) returns (comm.AppendEntriesResponse);
      */
     appendEntries(input: AppendEntriesRequest, options?: RpcOptions): UnaryCall<AppendEntriesRequest, AppendEntriesResponse> {
-        const method = this.methods[8], opt = this._transport.mergeOptions(options);
+        const method = this.methods[9], opt = this._transport.mergeOptions(options);
         return stackIntercept<AppendEntriesRequest, AppendEntriesResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: RequestVote(comm.RequestVoteRequest) returns (comm.RequestVoteResponse);
      */
     requestVote(input: RequestVoteRequest, options?: RpcOptions): UnaryCall<RequestVoteRequest, RequestVoteResponse> {
-        const method = this.methods[9], opt = this._transport.mergeOptions(options);
+        const method = this.methods[10], opt = this._transport.mergeOptions(options);
         return stackIntercept<RequestVoteRequest, RequestVoteResponse>("unary", this._transport, method, opt, input);
     }
 }

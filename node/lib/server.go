@@ -27,13 +27,56 @@ func (s *server) ValidateRequest() (code int32, message string) {
 }
 
 func (s *server) Ping(ctx context.Context, in *comm.BasicRequest) (*comm.BasicResponse, error) {
-	log.Printf("[Transaction] Received ping")
+	log.Printf("[Config] Received ping")
 	return &comm.BasicResponse{Code: 200, Message: "PONG"}, nil
+}
+
+func (s *server) Status(ctx context.Context, in *comm.BasicRequest) (*comm.BasicResponse, error) {
+	log.Printf("[Config] Received status request")
+
+	log.Printf("\n\nNode Info:")
+	log.Printf("id: %v", s.Node.info.id)
+	log.Printf("state: %v", s.Node.state)
+	log.Printf("leaderId: %v", s.Node.info.leaderId)
+	log.Printf("currentTerm: %v", s.Node.info.currentTerm)
+	log.Printf("commitIndex %v", s.Node.info.commitIndex)
+	// log.Printf("lastApplied %v", s.Node.info.lastApplied)
+	log.Printf("clusterAddresses: %v", s.Node.info.clusterAddresses)
+	log.Printf("clusterCount: %v", s.Node.info.clusterCount)
+	log.Printf("timeoutAvgTime%v", s.Node.info.timeoutAvgTime)
+	log.Printf("isJointConsensus %v", s.Node.info.isJointConsensus)
+
+	log.Printf("/\n\nlog info:")
+	for index, entry := range s.Node.info.log {
+		log.Printf("[%v]: %v %v %v", index, entry.Command, entry.Key, entry.Value)
+	}
+
+	if s.Node.info.isJointConsensus {
+		log.Printf("/\n\nJoint Consensus info:")
+
+		log.Printf("newClusterAddresses: %v", s.Node.info.newClusterAddresses)
+		log.Printf("newClusterCount: %v", s.Node.info.newClusterCount)
+	}
+
+	if s.Node.state == Leader {
+		log.Printf("/\n\nLeader info:")
+
+		log.Printf("serverUp: %v", s.Node.info.serverUp)
+		log.Printf("nextIndex: %v", s.Node.info.nextIndex)
+		log.Printf("matchIndex: %v", s.Node.info.matchIndex)
+
+		if s.Node.info.isJointConsensus {
+			log.Printf("nextIndexNew: %v", s.Node.info.nextIndexNew)
+			log.Printf("matchIndexNew: %v", s.Node.info.matchIndexNew)
+		}
+	}
+
+	return &comm.BasicResponse{Code: 200, Message: "STAT"}, nil
 }
 
 func (s *server) Stop(ctx context.Context, in *comm.BasicRequest) (*comm.BasicResponse, error) {
 	defer s.Node.Stop()
-	log.Printf("[Transaction] Received stop signal")
+	log.Printf("[Config] Received stop signal")
 	return &comm.BasicResponse{Code: 200, Message: "STOPPING"}, nil
 }
 
@@ -77,8 +120,8 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 				s.Node.info.nextIndex[index]++
 			}
 		}
-		log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
-		log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
+		// log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
+		// log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
 
 		for transactionIndex != s.Node.info.commitIndex {
 		}
@@ -128,8 +171,8 @@ func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (
 				s.Node.info.nextIndex[index]++
 			}
 		}
-		log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
-		log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
+		// log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
+		// log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
 
 		for transactionIndex != s.Node.info.commitIndex {
 		}
@@ -164,8 +207,8 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 				s.Node.info.nextIndex[index]++
 			}
 		}
-		log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
-		log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
+		// log.Printf("[Transaction] matchIndex: %v", s.Node.info.matchIndex)
+		// log.Printf("[Transaction] nextIndex: %v", s.Node.info.nextIndex)
 
 		for transactionIndex != s.Node.info.commitIndex {
 		}
@@ -176,7 +219,7 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 }
 
 func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembershipRequest) (*comm.ChangeMembershipResponse, error) {
-	log.Printf("[Transaction] Received membership change request")
+	log.Printf("[Config] Received membership change request")
 
 	// clusterAddresses & newClusterAddresses example:
 	// "10.1.78.242:60000,10.1.78.242:60001,10.1.78.242:60002"
@@ -184,20 +227,18 @@ func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembership
 	var code int32
 	var message string
 
-	var clusterAddresses []net.TCPAddr
 	var newClusterAddresses []net.TCPAddr
 
 	// Validate the request first
 	code, message = s.ValidateRequest()
 	if code == 200 {
 		// Parse the (old) addresses and new addresses
-		clusterAddresses, newClusterAddresses = parseAddresses(in.ClusterAddresses, in.NewClusterAddresses)
+		newClusterAddresses = parseAddresses(in.NewClusterAddresses)
+		log.Printf("[Config] New addresses: %v", newClusterAddresses)
 
 		// Set it in the node
-		s.Node.info.clusterAddresses = clusterAddresses
 		s.Node.info.newClusterAddresses = newClusterAddresses
-		s.Node.info.clusterCount = len(clusterAddresses)
-		s.Node.info.newClusterCount = len(clusterAddresses)
+		s.Node.info.newClusterCount = len(newClusterAddresses)
 
 		// Set that the node is in the joint consensus state
 		s.Node.info.isJointConsensus = true
@@ -213,9 +254,8 @@ func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembership
 	return &comm.ChangeMembershipResponse{Code: code, Message: message, Value: in.NewClusterAddresses}, nil
 }
 
-func parseAddresses(clusterAddresses string, newClusterAddresses string) ([]net.TCPAddr, []net.TCPAddr) {
+func parseAddresses(clusterAddresses string) []net.TCPAddr {
 	var clusterAddressesTcp []net.TCPAddr
-	var newClusterAddressesTcp []net.TCPAddr
 
 	if clusterAddresses != "" {
 
@@ -231,21 +271,7 @@ func parseAddresses(clusterAddresses string, newClusterAddresses string) ([]net.
 		}
 	}
 
-	if newClusterAddresses != "" {
-
-		newAddresses := strings.Split(newClusterAddresses, ",")
-
-		for _, newAddress := range newAddresses {
-			a, err := net.ResolveTCPAddr("tcp", newAddress)
-			if err != nil {
-				log.Fatalf("Invalid address: %v", newAddress)
-			}
-
-			clusterAddressesTcp = append(clusterAddressesTcp, *a)
-		}
-	}
-
-	return clusterAddressesTcp, newClusterAddressesTcp
+	return clusterAddressesTcp
 }
 
 // Raft purposes
@@ -287,7 +313,7 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 
 		if entry.Command == int32(NewOldConfig) {
 			s.Node.info.isJointConsensus = true
-			_, s.Node.info.newClusterAddresses = parseAddresses("", entry.Value)
+			s.Node.info.newClusterAddresses = parseAddresses(entry.Value)
 			s.Node.info.newClusterCount = len(s.Node.info.newClusterAddresses)
 
 		} else if entry.Command == int32(NewConfig) {

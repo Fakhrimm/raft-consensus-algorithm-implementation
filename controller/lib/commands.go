@@ -2,13 +2,27 @@ package controller
 
 import (
 	"Controller/grpc/comm"
+	"bufio"
 	"context"
 	"log"
+	"net"
+	"os"
+	"strings"
 )
 
 func (c *Controller) Ping(address string) {
 	c.Call(address, func() {
 		response, err := c.client.Ping(context.Background(), &comm.BasicRequest{})
+		if err != nil {
+			log.Printf("ping error: %v", err)
+		}
+		log.Printf("Response: {%v}", response)
+	})
+}
+
+func (c *Controller) Status(address string) {
+	c.Call(address, func() {
+		response, err := c.client.Status(context.Background(), &comm.BasicRequest{})
 		if err != nil {
 			log.Printf("ping error: %v", err)
 		}
@@ -74,10 +88,54 @@ func (c *Controller) Append(address string, key string, value string) {
 	})
 }
 
-func (c *Controller) Config(address string, file string) {
-	c.Call(address, func() {
-		_, err := c.client.Stop(context.Background(), &comm.BasicRequest{})
+func (c *Controller) Config(address string, filename string) {
+	file, err := os.Open(filename)
 
-		log.Println("Server response:", err)
+	if err != nil {
+		log.Printf("Failed to load hostfile: %v", err)
+
+		currentDir, err := os.Getwd()
+		if err != nil {
+			log.Printf("Error getting current directory: %v\n", err)
+			return
+		}
+		log.Printf("Current directory is: %v", currentDir)
+		log.Printf("File attempted to be open is: %v", filename)
+
+		return
+	}
+	defer file.Close()
+
+	serverList := ""
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		_, err := net.ResolveTCPAddr("tcp", line)
+		if err != nil {
+			continue
+		}
+		serverList += line + ","
+
+	}
+
+	if len(serverList) > 0 {
+		serverList = strings.TrimSuffix(serverList, ",")
+	}
+
+	log.Printf("Sending new server configuration: %v", serverList)
+	c.Call(address, func() {
+		response, err := c.client.ChangeMembership(context.Background(), &comm.ChangeMembershipRequest{
+			NewClusterAddresses: serverList,
+		})
+
+		if err != nil {
+			log.Printf("Config error: %v", err)
+		}
+		log.Println("Server response:", response)
 	})
 }

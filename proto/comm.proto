@@ -6,6 +6,7 @@ option go_package = "grpc/comm";
 
 service CommService {
   rpc Ping (BasicRequest) returns (BasicResponse);
+  rpc Status (BasicRequest) returns (BasicResponse);
   rpc Stop (BasicRequest) returns (BasicResponse);
   rpc GetValue (GetValueRequest) returns (GetValueResponse);
   rpc SetValue (SetValueRequest) returns (SetValueResponse);
@@ -109,8 +110,7 @@ message RequestVoteResponse {
 }
 
 message ChangeMembershipRequest {
-  string clusterAddresses = 1;
-  string newClusterAddresses = 2;
+  string newClusterAddresses = 1;
 }
 
 message ChangeMembershipResponse {
