@@ -20,12 +20,12 @@ func main() {
 	flag.BoolVar(&isJointConsensus, "isjointconsensus", false, "The list of new servers in the cluster")
 	flag.Parse()
 
-	node := node.NewNode(addr)
+	newNode := node.NewNode(addr)
 	log.Printf("hostFile: %v", ".."+hostfile)
 	log.Printf("hostFileNew: %v", ".."+hostfileNew)
 	log.Printf("isJointConsensus: %v", isJointConsensus)
-	node.Init(".."+hostfile, timeoutAvg, ".."+hostfileNew, isJointConsensus)
+	newNode.Init(".."+hostfile, timeoutAvg, ".."+hostfileNew, isJointConsensus)
 
-	for node.Running {
+	for newNode.Running {
 	}
 }
