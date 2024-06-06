@@ -47,7 +47,7 @@ function Server {
         [int]$Timeout = 200,
         [boolean]$IsJointConsensus = $false,
         [string]$Hostfile = "/config/Hostfile",
-        [string]$HostfileNew = ""
+        [string]$HostfileNew = "default"
     )
     if (-not $Addr) {
         $Addr = WifiIP
@@ -58,7 +58,18 @@ function Server {
     Write-Host "Starting node on ${Addr}:${Port}"
     
     Push-Location -Path "node"
-    Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k `"go run main.go -addr ${Addr}:${Port} -hostfile $Hostfile -hostfilenew $HostfileNew -isjointconsensus $IsJointConsensus -timeout $Timeout`"" -NoNewWindow
+    $command = "go run main.go -addr ${Addr}:${Port} -hostfile $Hostfile -hostfilenew $HostfileNew -timeout $Timeout"
+
+    if ($IsJointConsensus) {
+        $command += " -jointconsensus"
+    }
+
+    Write-Host $command
+    if (1 -eq 2) {
+        Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k", $command -NoNewWindow
+    } else {
+        StartWithWindowsTerminal -Command $command "${Addr}:${Port}"
+    }
     Pop-Location
 }
 
@@ -106,4 +117,23 @@ function WifiIP {
     $wifiIPAddress = Get-NetIPAddress | Where-Object -FilterScript { $_.InterfaceAlias -Eq "Wi-Fi" -and $_.AddressFamily -Eq "IPv4" }
     $ipAddress = $wifiIPAddress.IPAddress
     return $ipAddress
+}
+
+function StartWithWindowsTerminal {
+    param (
+        [string]$Command,
+        [string]$Title = "Server"
+    )
+    $initDir = Get-Location
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = "wt.exe"
+    $startInfo.Arguments = "-w 0 nt --suppressApplicationTitle --title "+ $Title +" -d " + $initDir + " cmd /k " + $Command
+    $startInfo.UseShellExecute = $false
+
+#     Set environment variables (Uncomment if needed)
+#    $startInfo.Environment["Path"] = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
+#            [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+    # Start the process
+    [System.Diagnostics.Process]::Start($startInfo)
 }
