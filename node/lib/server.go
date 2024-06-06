@@ -54,7 +54,6 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 	var message string
 	var value string
 
-	// TODO: Synchronize before sending ok
 	code, message = s.ValidateRequest()
 	if code == 200 {
 		message = "Value set request completed"
@@ -91,7 +90,6 @@ func (s *server) StrlnValue(ctx context.Context, in *comm.StrlnValueRequest) (*c
 	var message string
 	var value int32
 
-	// TODO: Synchronize before sending ok
 	code, message = s.ValidateRequest()
 	if code == 200 {
 		message = "Strlen fetched successfully"
@@ -107,7 +105,6 @@ func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (
 	var message string
 	var value string
 
-	// TODO: Synchronize before sending ok
 	code, message = s.ValidateRequest()
 	if code == 200 {
 		message = "Value delete request completed"
@@ -144,7 +141,6 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 	var message string
 	var value string
 
-	// TODO: Synchronize before sending ok
 	code, message = s.ValidateRequest()
 	if code == 200 {
 		message = "Value append request completed"
@@ -323,6 +319,7 @@ func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (
 		vote = true
 		s.Node.info.votedFor = int(in.CandidateId)
 		s.Node.electionResetSignal <- true
+		s.Node.info.currentTerm = int(in.Term)
 	} else {
 		log.Printf("[Election] Node %v requests for vote, declined", in.CandidateId)
 	}

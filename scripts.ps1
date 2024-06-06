@@ -61,13 +61,14 @@ function Server {
     $command = "go run main.go -addr ${Addr}:${Port} -hostfile $Hostfile -hostfilenew $HostfileNew -timeout $Timeout"
 
     if ($IsJointConsensus) {
-        $command += " -jointconsensus"
+        $command += " -isjointconsensus"
     }
 
     Write-Host $command
     if (1 -eq 2) {
         Start-Process -FilePath "cmd" -ArgumentList "/c start cmd /k", $command -NoNewWindow
-    } else {
+    }
+    else {
         StartWithWindowsTerminal -Command $command "${Addr}:${Port}"
     }
     Pop-Location
@@ -127,12 +128,12 @@ function StartWithWindowsTerminal {
     $initDir = Get-Location
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = "wt.exe"
-    $startInfo.Arguments = "-w 0 nt --suppressApplicationTitle --title "+ $Title +" -d " + $initDir + " cmd /k " + $Command
+    $startInfo.Arguments = "-w 0 nt --suppressApplicationTitle --title " + $Title + " -d " + $initDir + " cmd /k " + $Command
     $startInfo.UseShellExecute = $false
 
-#     Set environment variables (Uncomment if needed)
-#    $startInfo.Environment["Path"] = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
-#            [System.Environment]::GetEnvironmentVariable("Path", "User")
+    #     Set environment variables (Uncomment if needed)
+    #    $startInfo.Environment["Path"] = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
+    #            [System.Environment]::GetEnvironmentVariable("Path", "User")
 
     # Start the process
     [System.Diagnostics.Process]::Start($startInfo)
