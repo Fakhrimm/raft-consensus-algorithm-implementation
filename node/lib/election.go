@@ -55,8 +55,7 @@ func (node *Node) ElectionTimerHandler() {
 
 func (node *Node) startElection() {
 	interval := time.Duration(node.info.timeoutAvgTime) * time.Second / 100 / 3
-	log.Printf("[Election] Starting election for cluster size of %v", node.info.clusterCount)
-
+	log.Printf("[Election] START ELECTION; TERM: %v; CLUSTER SIZE: %v", node.info.currentTerm, node.info.clusterCount)
 	node.info.currentTerm++
 	node.state = Candidate
 	lastLogIdx := int32(len(node.info.log) - 1)
@@ -67,7 +66,7 @@ func (node *Node) startElection() {
 		voteNew := node.sendElection(node.info.newClusterAddresses, interval)
 
 		if (vote > node.info.clusterCount/2) && (voteNew > node.info.newClusterCount/2) {
-			log.Printf("[Election] Node is now a leader for term %v", node.info.currentTerm)
+			log.Printf("[Election] ELECTED; TERM: %v; isJointConsensus: TRUE", node.info.currentTerm)
 			node.info.serverUp = true
 			node.state = Leader
 
@@ -100,7 +99,7 @@ func (node *Node) startElection() {
 		}
 	} else {
 		if vote > node.info.clusterCount/2 {
-			log.Printf("[Election] Node is now a leader for term %v", node.info.currentTerm)
+			log.Printf("[Election] ELECTED; TERM: %v; isJointConsensus: FALSE", node.info.currentTerm)
 			node.info.serverUp = true
 			node.state = Leader
 
