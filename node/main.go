@@ -28,4 +28,6 @@ func main() {
 
 	for newNode.Running {
 	}
+
+	log.Println("Program is stopped")
 }

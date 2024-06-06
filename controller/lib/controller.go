@@ -3,7 +3,6 @@ package controller
 import (
 	"Controller/grpc/comm"
 	"bufio"
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -62,84 +61,49 @@ func (c *Controller) Run() {
 				log.Println("Usage: ping <address>")
 				continue
 			}
-			c.Call(parts[1], func() {
-				response, err := c.client.Ping(context.Background(), &comm.BasicRequest{})
-				if err != nil {
-					log.Printf("ping error: %v", err)
-				}
-				log.Printf("Response: {%v}", response)
-			})
+			c.Ping(parts[1])
 		case "get":
 			if length < 3 {
 				log.Println("Usage: get <address> <key>")
 				continue
 			}
-			c.Call(parts[1], func() {
-				response, err := c.client.GetValue(context.Background(), &comm.GetValueRequest{Key: parts[2]})
-				if err != nil {
-					log.Printf("get error: %v", err)
-				}
-				log.Printf("Response: {%v}", response)
-			})
+			c.Get(parts[1], parts[2])
 		case "set":
 			if length < 4 {
 				log.Println("Usage: get <address> <key> <value>")
 				continue
 			}
-			c.Call(parts[1], func() {
-				response, err := c.client.SetValue(context.Background(), &comm.SetValueRequest{Key: parts[2], Value: parts[3]})
-				if err != nil {
-					log.Printf("set error: %v", err)
-				}
-				log.Printf("Response: {%v}", response)
-			})
+			c.Set(parts[1], parts[2], parts[3])
 		case "strlen":
 			if length < 3 {
 				log.Println("Usage: strlen <address> <key>")
 				continue
 			}
-			c.Call(parts[1], func() {
-				response, err := c.client.StrlnValue(context.Background(), &comm.StrlnValueRequest{Key: parts[2]})
-				if err != nil {
-					log.Printf("strlen error: %v", err)
-				}
-				log.Printf("Response: {%v}", response)
-			})
+			c.Strlen(parts[1], parts[2])
 		case "delete":
 			if length < 3 {
 				log.Println("Usage: strlen <address> <key>")
 				continue
 			}
-			c.Call(parts[1], func() {
-				response, err := c.client.DeleteValue(context.Background(), &comm.DeleteValueRequest{Key: parts[2]})
-				if err != nil {
-					log.Printf("delete error: %v", err)
-				}
-				log.Printf("Response: {%v}", response)
-			})
+			c.Delete(parts[1], parts[2])
 		case "append":
 			if length < 4 {
 				log.Println("Usage: append <address> <key> <value>")
 				continue
 			}
-			c.Call(parts[1], func() {
-				response, err := c.client.AppendValue(context.Background(), &comm.AppendValueRequest{Key: parts[2], Value: parts[3]})
-				if err != nil {
-					log.Printf("append error: %v", err)
-				}
-				log.Printf("Response: {%v}", response)
-			})
+			c.Append(parts[1], parts[2], parts[3])
 		case "stop":
 			if length < 2 {
 				log.Println("Usage: stop <address>")
 				continue
 			}
-			c.Call(parts[1], func() {
-				_, err := c.client.Stop(context.Background(), &comm.BasicRequest{})
-
-				log.Println("Server response:", err)
-			})
-
+			c.Stop(parts[1])
+		case "config":
+			if length < 3 {
+				log.Println("Usage: config <address> <config file>")
+				continue
+			}
+			c.Config(parts[1], parts[2])
 		default:
 			log.Println("Unknown Command: ", parts[0])
 		}

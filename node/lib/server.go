@@ -16,8 +16,10 @@ type server struct {
 // Application purposes
 func (s *server) ValidateRequest() (code int32, message string) {
 	if s.Node.state != Leader {
+		log.Printf("[Transaction] Transaction refused, node is not leader")
 		return 501, s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
 	} else if !s.Node.info.serverUp {
+		log.Printf("[Transaction] Transaction refused, not enough active nodes")
 		return 503, "Service Unavailable"
 	} else {
 		return 200, "OK"
@@ -25,11 +27,13 @@ func (s *server) ValidateRequest() (code int32, message string) {
 }
 
 func (s *server) Ping(ctx context.Context, in *comm.BasicRequest) (*comm.BasicResponse, error) {
+	log.Printf("[Transaction] Received ping")
 	return &comm.BasicResponse{Code: 200, Message: "PONG"}, nil
 }
 
 func (s *server) Stop(ctx context.Context, in *comm.BasicRequest) (*comm.BasicResponse, error) {
 	defer s.Node.Stop()
+	log.Printf("[Transaction] Received stop signal")
 	return &comm.BasicResponse{Code: 200, Message: "STOPPING"}, nil
 }
 
@@ -172,6 +176,8 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 }
 
 func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembershipRequest) (*comm.ChangeMembershipResponse, error) {
+	log.Printf("[Transaction] Received membership change request")
+
 	// clusterAddresses & newClusterAddresses example:
 	// "10.1.78.242:60000,10.1.78.242:60001,10.1.78.242:60002"
 	// (separated by comma)

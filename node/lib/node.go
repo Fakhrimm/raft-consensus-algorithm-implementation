@@ -4,7 +4,6 @@ import (
 	"Node/grpc/comm"
 	"bufio"
 	"context"
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"log"
 	"net"
 	"net/http"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -139,10 +140,11 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, 
 		Addr:    strings.Join(addr, ":"),
 	}
 	log.Printf("grpc-web server listening at %v", srv.Addr)
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
-
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && node.Running {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
 }
 
 func (node *Node) InitServer() {
@@ -161,7 +163,7 @@ func (node *Node) InitServer() {
 	log.Printf("server set address is %v, listening at %v", node.address.String(), lis.Addr())
 
 	go func() {
-		if err := node.grpcServer.Serve(lis); err != nil {
+		if err := node.grpcServer.Serve(lis); err != nil && node.Running {
 			node.Running = false
 			log.Fatalf("Failed to serve %v", err)
 		}
