@@ -5,13 +5,12 @@ import (
 	"context"
 	"log"
 	"net"
-	"sync"
 )
 
 type server struct {
 	comm.UnimplementedCommServiceServer
 	Node  *Node
-	mutex sync.Mutex
+	mutex Mutex
 }
 
 // Application purposes

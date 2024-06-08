@@ -10,7 +10,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
@@ -65,7 +64,7 @@ type Info struct {
 type Node struct {
 	// General attribute
 	Running bool
-	mutex   sync.Mutex
+	mutex   Mutex
 
 	// Grpc purposes
 	address    net.TCPAddr
@@ -296,6 +295,7 @@ func (node *Node) appendToLog(newEntry comm.Entry) {
 	node.info.log = append(node.info.log, newEntry)
 
 	node.info.matchIndex[node.info.id] = len(node.info.log) - 1
+	// node.info.nextIndex[node.info.id] = len(node.info.log)
 
 	for index, nextIndex := range node.info.nextIndex {
 		if nextIndex == node.info.matchIndex[index] {

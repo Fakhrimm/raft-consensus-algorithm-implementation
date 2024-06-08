@@ -69,27 +69,33 @@ func (node *Node) startElection() {
 		if (vote > node.info.clusterCount/2) && (voteNew > node.info.newClusterCount/2) {
 			log.Printf("[Election] ELECTED; TERM: %v; isJointConsensus: TRUE", node.info.currentTerm)
 			node.info.serverUp = true
+			node.info.leaderId = node.info.id
 			node.state = Leader
+
+			// TODO: check and only commit the ones in leader term
+			// discard uncommited log from other leader
 
 			// Old
 			node.info.matchIndex = make([]int, node.info.clusterCount)
-			node.info.matchIndex[node.info.id] = len(node.info.log) - 1
-
 			node.info.nextIndex = make([]int, node.info.clusterCount)
+
 			for i := range node.info.nextIndex {
 				node.info.nextIndex[i] = int(lastLogIdx)
 				node.info.matchIndex[i] = -1
 			}
+			node.info.matchIndex[node.info.id] = int(lastLogIdx)
+			node.info.nextIndex[node.info.id] = int(lastLogIdx) + 1
 
 			// New
 			node.info.matchIndexNew = make([]int, node.info.newClusterCount)
-			node.info.matchIndexNew[node.info.id] = len(node.info.log) - 1
-
 			node.info.nextIndexNew = make([]int, node.info.newClusterCount)
+
 			for i := range node.info.nextIndexNew {
 				node.info.nextIndexNew[i] = int(lastLogIdx)
 				node.info.matchIndexNew[i] = -1
 			}
+			node.info.matchIndexNew[node.info.id] = int(lastLogIdx)
+			node.info.nextIndexNew[node.info.id] = int(lastLogIdx) + 1
 			// log.Printf("[Election] matchIndex: %v", node.info.matchIndex)
 			// log.Printf("[Election] nextIndex: %v", node.info.nextIndex)
 
@@ -102,16 +108,21 @@ func (node *Node) startElection() {
 		if vote > node.info.clusterCount/2 {
 			log.Printf("[Election] ELECTED; TERM: %v; isJointConsensus: FALSE", node.info.currentTerm)
 			node.info.serverUp = true
+			node.info.leaderId = node.info.id
 			node.state = Leader
 
-			node.info.matchIndex = make([]int, node.info.clusterCount)
-			node.info.matchIndex[node.info.id] = len(node.info.log) - 1
+			// TODO: check and only commit the ones in leader term
+			// discard uncommited log from other leader
 
+			node.info.matchIndex = make([]int, node.info.clusterCount)
 			node.info.nextIndex = make([]int, node.info.clusterCount)
+
 			for i := range node.info.nextIndex {
 				node.info.nextIndex[i] = int(lastLogIdx)
 				node.info.matchIndex[i] = -1
 			}
+			node.info.matchIndex[node.info.id] = int(lastLogIdx)
+			node.info.nextIndex[node.info.id] = int(lastLogIdx) + 1
 			// log.Printf("[Election] matchIndex: %v", node.info.matchIndex)
 			// log.Printf("[Election] nextIndex: %v", node.info.nextIndex)
 
@@ -169,7 +180,7 @@ func (node *Node) sendElection(address []net.TCPAddr, interval time.Duration) in
 					log.Printf("[Election] Received vote from node %v", peer.String())
 					voteCh <- true
 				} else if response.Term > int32(node.info.currentTerm) {
-					log.Printf("[Election] Received higher term %v from node, turns to follower %v", peer.String())
+					log.Printf("[Election] Received higher term %v from node, turns to follower %v", peer.String(), node.info.currentTerm)
 					log.Printf("[Election] [UPDATE TERM] Before TERM: %v, After TERM: %v", node.info.currentTerm, response.Term)
 					node.info.currentTerm = int(response.Term)
 					node.state = Follower
