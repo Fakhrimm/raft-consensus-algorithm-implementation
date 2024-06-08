@@ -1,3 +1,7 @@
+function Clean {
+    Get-ChildItem -Path "config" -Recurse -Filter *.storage | Remove-Item -Force
+}
+
 function Tidy {
     Write-Host "Running 'go mod tidy' at node and controller"
 
