@@ -23,7 +23,6 @@ func (node *Node) LoadLogs() {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	index := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -32,8 +31,30 @@ func (node *Node) LoadLogs() {
 
 		entry := node.ParseLog(line)
 
+		if entry.Command == int32(NewOldConfig) {
+			node.info.isJointConsensus = true
+			node.info.newClusterAddresses = parseAddresses(entry.Value)
+			node.info.newClusterCount = len(node.info.newClusterAddresses)
+			node.info.idNew = -1
+			for index, address := range node.info.newClusterAddresses {
+				if node.address.String() == address.String() {
+					node.info.idNew = index
+					break
+				}
+			}
+		} else if entry.Command == int32(NewConfig) {
+			node.info.isJointConsensus = false
+			node.info.clusterCount = node.info.newClusterCount
+			node.info.clusterAddresses = node.info.newClusterAddresses
+
+			if node.info.idNew == -1 {
+				defer node.Stop()
+			} else {
+				node.info.id = node.info.idNew
+			}
+		}
+
 		logList = append(logList, entry)
-		index++
 	}
 
 	node.info.log = logList
@@ -58,6 +79,13 @@ func (node *Node) SaveLogs() {
 }
 
 func (node *Node) SaveLog(entry comm.Entry) {
+	// TODO: Should config commands be kept persistent?
+
+	// if entry.Command == int32(NewConfig) || entry.Command == int32(NewOldConfig) {
+	// 	log.Printf("[Persistence] Log not written because it's a command")
+	// 	return
+	// }
+
 	content := fmt.Sprintf("%v %v %v %v\n", entry.Command, entry.Key, entry.Value, entry.Term)
 	filepath := fmt.Sprintf("../config/%vport%v.storage", node.address.IP, node.address.Port)
 

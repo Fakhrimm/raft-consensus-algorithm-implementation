@@ -2,3 +2,4 @@
 *.iml
 *.storage
 config/Hostfile
+*.temp

@@ -94,8 +94,8 @@ func (node *Node) startElection() {
 				node.info.nextIndexNew[i] = int(lastLogIdx) + 1
 				node.info.matchIndexNew[i] = -1
 			}
-			node.info.matchIndexNew[node.info.id] = int(lastLogIdx)
-			node.info.nextIndexNew[node.info.id] = int(lastLogIdx) + 1
+			node.info.matchIndexNew[node.info.idNew] = int(lastLogIdx)
+			node.info.nextIndexNew[node.info.idNew] = int(lastLogIdx) + 1
 			// log.Printf("[Election] matchIndex: %v", node.info.matchIndex)
 			// log.Printf("[Election] nextIndex: %v", node.info.nextIndex)
 
@@ -226,7 +226,11 @@ func (node *Node) startAppendEntries() {
 			if node.info.isJointConsensus {
 				newAliveNode := 0
 				newAliveNode = node.sendAppendEntries(node.info.newClusterAddresses, interval)
-				log.Printf("[Heartbeat]")
+				if node.state != Leader {
+					return
+				}
+				// log.Printf("[Heartbeat] Total received old heartbeat is %v/%v", aliveNode, node.info.clusterCount)
+				// log.Printf("[Heartbeat] Total received new heartbeat is %v/%v", newAliveNode, node.info.newClusterCount)
 
 				if (2*aliveNode <= node.info.clusterCount) && (2*newAliveNode <= node.info.newClusterCount) {
 					node.info.serverUp = false
@@ -235,7 +239,7 @@ func (node *Node) startAppendEntries() {
 					node.info.serverUp = true
 				}
 			} else {
-				// log.Printf("[Heartbeat] Total received heartbeat is %v/%v", aliveNodeCount, node.info.clusterCount)
+				// log.Printf("[Heartbeat] Total received heartbeat is %v/%v", aliveNode, node.info.clusterCount)
 				if 2*aliveNode <= node.info.clusterCount {
 					node.info.serverUp = false
 				} else {
@@ -345,9 +349,11 @@ func (node *Node) updateMajority() {
 	if node.info.isJointConsensus {
 		newMajority := node.getMajority(node.info.matchIndexNew, node.info.newClusterCount)
 		node.CommitLogEntries(min(majority, newMajority))
+		log.Printf("[DEBUG] majority: %v, newMajoirity: %v", majority, newMajority)
 	} else {
 		node.CommitLogEntries(majority)
 	}
+
 }
 
 func (node *Node) getMajority(matchArray []int, clusterCount int) int {

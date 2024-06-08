@@ -29,6 +29,7 @@ func main() {
 	for newNode.Running {
 	}
 
+	newNode.Status()
 	newNode.SaveLogs()
 
 	log.Println("Program is stopped")

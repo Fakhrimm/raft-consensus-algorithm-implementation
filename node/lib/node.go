@@ -37,6 +37,7 @@ const (
 type Info struct {
 	// Persistent
 	id                  int
+	idNew               int
 	leaderId            int
 	currentTerm         int
 	votedFor            int
@@ -99,18 +100,16 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, 
 	node.LoadLogs()
 	node.InitServer()
 
-	node.info.clusterAddresses, node.info.clusterCount = node.ReadServerList(hostfile)
+	node.info.clusterAddresses, node.info.clusterCount, node.info.id = node.ReadServerList(hostfile)
 	log.Printf("Check: %v", node.info.clusterAddresses)
 
 	if isJointConsensus {
-		node.info.newClusterAddresses, node.info.newClusterCount = node.ReadServerList(newHostfile)
-	} else {
-		node.info.newClusterAddresses = []net.TCPAddr{}
-		node.info.newClusterCount = 0
+		node.info.newClusterAddresses, node.info.newClusterCount, node.info.idNew = node.ReadServerList(newHostfile)
+		node.info.isJointConsensus = isJointConsensus
 	}
-	node.info.isJointConsensus = isJointConsensus
 
 	node.info.timeoutAvgTime = timeoutAvgTime
+	node.info.commitIndex = -1
 
 	node.resetElectionTimer()
 
@@ -120,8 +119,33 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, 
 	node.state = Follower
 
 	go node.ElectionTimerHandler()
+}
+
+func (node *Node) InitServer() {
+	log.Printf("Initializing grpc server")
+
+	lis, err := net.Listen("tcp4", node.address.String())
+
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+
+	s := server{Node: node}
+	node.grpcServer = grpc.NewServer()
+	comm.RegisterCommServiceServer(node.grpcServer, &s)
+
+	log.Printf("server set address is %v, listening at %v", node.address.String(), lis.Addr())
+
+	go func() {
+		if err := node.grpcServer.Serve(lis); err != nil && node.Running {
+			node.Running = false
+			log.Fatalf("Failed to serve %v", err)
+		}
+	}()
 
 	// Start the grpc-web server
+	log.Printf("Initializing grpc web server")
+
 	grpcWebServer := grpcweb.WrapServer(
 		node.grpcServer,
 		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
@@ -146,39 +170,17 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, 
 	}()
 }
 
-func (node *Node) InitServer() {
-	log.Printf("Initializing grpc server")
-
-	lis, err := net.Listen("tcp4", node.address.String())
-
-	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
-	}
-
-	s := server{Node: node}
-	node.grpcServer = grpc.NewServer()
-	comm.RegisterCommServiceServer(node.grpcServer, &s)
-
-	log.Printf("server set address is %v, listening at %v", node.address.String(), lis.Addr())
-
-	go func() {
-		if err := node.grpcServer.Serve(lis); err != nil && node.Running {
-			node.Running = false
-			log.Fatalf("Failed to serve %v", err)
-		}
-	}()
-}
-
-func (node *Node) ReadServerList(filename string) ([]net.TCPAddr, int) {
+func (node *Node) ReadServerList(filename string) ([]net.TCPAddr, int, int) {
 	log.Printf("Initializing server list")
 
 	var serverList []net.TCPAddr
+	id := -1
 
 	file, err := os.Open(filename)
 
 	if err != nil {
 		log.Printf("Failed to load hostfile: %v", err)
-		return serverList, 0
+		return serverList, 0, id
 	}
 	defer file.Close()
 
@@ -195,7 +197,7 @@ func (node *Node) ReadServerList(filename string) ([]net.TCPAddr, int) {
 			log.Fatalf("Invalid address: %v", line)
 		}
 		if addr.String() == node.address.String() {
-			node.info.id = index
+			id = index
 		}
 
 		serverList = append(serverList, *addr)
@@ -203,7 +205,7 @@ func (node *Node) ReadServerList(filename string) ([]net.TCPAddr, int) {
 		index++
 	}
 
-	return serverList, len(serverList)
+	return serverList, len(serverList), id
 }
 
 func (node *Node) Call(address string, callable func()) {
@@ -243,9 +245,13 @@ func (node *Node) CommitLogEntries(newCommitIndex int) {
 				if contained {
 					node.info.clusterAddresses = node.info.newClusterAddresses
 					node.info.clusterCount = node.info.newClusterCount
+					node.info.id = node.info.idNew
 					node.info.isJointConsensus = false
+
+					// TODO: Stay leader or reset?
+					node.info.leaderId = node.info.idNew
 				} else {
-					log.Printf("[CommitLogEntries] Node %v is not in new cluster but its a leader, precedes to kill itsel", node.address.String())
+					log.Printf("[CommitLogEntries] Node %v is not in new cluster but its a leader, precedes to kill itself", node.address.String())
 					node.Stop()
 				}
 			}
@@ -254,7 +260,10 @@ func (node *Node) CommitLogEntries(newCommitIndex int) {
 				newEntry := comm.Entry{
 					Term:    int32(node.info.currentTerm),
 					Command: int32(NewConfig),
+					Key:     "-",
+					Value:   "-",
 				}
+				log.Printf("[DEBUG] log is %v", i)
 				node.appendToLog(newEntry)
 			}
 		}
@@ -267,11 +276,22 @@ func (node *Node) appendToLog(newEntry comm.Entry) {
 	node.info.log = append(node.info.log, newEntry)
 
 	node.info.matchIndex[node.info.id] = len(node.info.log) - 1
-	// node.info.nextIndex[node.info.id] = len(node.info.log)
+	node.info.nextIndex[node.info.id] = len(node.info.log)
 
 	for index, nextIndex := range node.info.nextIndex {
 		if nextIndex == node.info.matchIndex[index] {
 			node.info.nextIndex[index]++
+		}
+	}
+
+	if node.info.isJointConsensus {
+		node.info.matchIndexNew[node.info.idNew] = len(node.info.log) - 1
+		node.info.nextIndexNew[node.info.idNew] = len(node.info.log)
+
+		for index, nextIndex := range node.info.nextIndex {
+			if nextIndex == node.info.matchIndexNew[index] {
+				node.info.nextIndexNew[index]++
+			}
 		}
 	}
 
@@ -283,3 +303,70 @@ func (node *Node) appendToLog(newEntry comm.Entry) {
 func (node *Node) Stop() {
 	node.Running = false
 }
+
+func (node *Node) Status() {
+	log.Printf("\n\nNode Info:")
+	log.Printf("id: %v", node.info.id)
+	log.Printf("state: %v", node.state)
+	log.Printf("leaderId: %v", node.info.leaderId)
+	log.Printf("currentTerm: %v", node.info.currentTerm)
+	log.Printf("commitIndex %v", node.info.commitIndex)
+	// log.Printf("lastApplied %v", node.info.lastApplied)
+	log.Printf("clusterAddresses: %v", node.info.clusterAddresses)
+	log.Printf("clusterCount: %v", node.info.clusterCount)
+	log.Printf("timeoutAvgTime%v", node.info.timeoutAvgTime)
+	log.Printf("isJointConsensus %v", node.info.isJointConsensus)
+
+	log.Printf("/\n\nlog info:")
+	for index, entry := range node.info.log {
+		log.Printf("[%v]: command: %v, key:%v, value:%v, term:%v", index, entry.Command, entry.Key, entry.Value, entry.Term)
+	}
+
+	// if node.info.isJointConsensus {
+	log.Printf("/\n\nJoint Consensus info:")
+
+	log.Printf("newClusterAddresses: %v", node.info.newClusterAddresses)
+	log.Printf("newClusterCount: %v", node.info.newClusterCount)
+	// }
+
+	// if node.state == Leader {
+	log.Printf("/\n\nLeader info:")
+
+	log.Printf("serverUp: %v", node.info.serverUp)
+	log.Printf("nextIndex: %v", node.info.nextIndex)
+	log.Printf("matchIndex: %v", node.info.matchIndex)
+
+	// if node.info.isJointConsensus {
+	log.Printf("nextIndexNew: %v", node.info.nextIndexNew)
+	log.Printf("matchIndexNew: %v", node.info.matchIndexNew)
+	// }
+	// }
+}
+
+// func (node *Node) PrepNewConfig(info string) {
+// 	node.info.isJointConsensus = true
+// 	node.info.newClusterAddresses = parseAddresses(info)
+// 	node.info.newClusterCount = len(node.info.newClusterAddresses)
+// 	node.info.idNew = -1
+// 	for index, address := range node.info.newClusterAddresses {
+// 		if node.address.String() == address.String() {
+// 			node.info.idNew = index
+// 			break
+// 		}
+// 	}
+// }
+
+// func (node *Node) ApplyNewConfig() {
+// 	if node.info.idNew == -1 {
+// 		log.Printf("[Config] Node %v is not in new cluster, precedes to kill itself", node.address.String())
+// 		node.Stop()
+// 	}
+
+// 	node.info.clusterAddresses = node.info.newClusterAddresses
+// 	node.info.clusterCount = node.info.newClusterCount
+// 	node.info.id = node.info.idNew
+// 	node.info.isJointConsensus = false
+
+// 	// TODO: Reset leadership?
+// 	// node.info.leaderId = node.info.idNew
+// }

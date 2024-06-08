@@ -27,49 +27,13 @@ func (s *server) ValidateRequest() (code int32, message string) {
 }
 
 func (s *server) Ping(ctx context.Context, in *comm.BasicRequest) (*comm.BasicResponse, error) {
-	log.Printf("[Config] Received ping")
+	log.Printf("[System] Received ping")
 	return &comm.BasicResponse{Code: 200, Message: "PONG"}, nil
 }
 
 func (s *server) Status(ctx context.Context, in *comm.BasicRequest) (*comm.BasicResponse, error) {
-	log.Printf("[Config] Received status request")
-
-	log.Printf("\n\nNode Info:")
-	log.Printf("id: %v", s.Node.info.id)
-	log.Printf("state: %v", s.Node.state)
-	log.Printf("leaderId: %v", s.Node.info.leaderId)
-	log.Printf("currentTerm: %v", s.Node.info.currentTerm)
-	log.Printf("commitIndex %v", s.Node.info.commitIndex)
-	// log.Printf("lastApplied %v", s.Node.info.lastApplied)
-	log.Printf("clusterAddresses: %v", s.Node.info.clusterAddresses)
-	log.Printf("clusterCount: %v", s.Node.info.clusterCount)
-	log.Printf("timeoutAvgTime%v", s.Node.info.timeoutAvgTime)
-	log.Printf("isJointConsensus %v", s.Node.info.isJointConsensus)
-
-	log.Printf("/\n\nlog info:")
-	for index, entry := range s.Node.info.log {
-		log.Printf("[%v]: command: %v, key:%v, value:%v, term:%v", index, entry.Command, entry.Key, entry.Value, entry.Term)
-	}
-
-	if s.Node.info.isJointConsensus {
-		log.Printf("/\n\nJoint Consensus info:")
-
-		log.Printf("newClusterAddresses: %v", s.Node.info.newClusterAddresses)
-		log.Printf("newClusterCount: %v", s.Node.info.newClusterCount)
-	}
-
-	if s.Node.state == Leader {
-		log.Printf("/\n\nLeader info:")
-
-		log.Printf("serverUp: %v", s.Node.info.serverUp)
-		log.Printf("nextIndex: %v", s.Node.info.nextIndex)
-		log.Printf("matchIndex: %v", s.Node.info.matchIndex)
-
-		if s.Node.info.isJointConsensus {
-			log.Printf("nextIndexNew: %v", s.Node.info.nextIndexNew)
-			log.Printf("matchIndexNew: %v", s.Node.info.matchIndexNew)
-		}
-	}
+	log.Printf("[System] Received status request")
+	s.Node.Status()
 
 	// s.Node.SaveLogs()
 
@@ -214,13 +178,33 @@ func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembership
 		// Set it in the node
 		s.Node.info.newClusterAddresses = newClusterAddresses
 		s.Node.info.newClusterCount = len(newClusterAddresses)
+		s.Node.info.idNew = -1
+		for index, address := range newClusterAddresses {
+			if s.Node.address.String() == address.String() {
+				s.Node.info.idNew = index
+				break
+			}
+		}
 
 		// Set that the node is in the joint consensus state
 		s.Node.info.isJointConsensus = true
 
+		// Initialize arrays
+		lastLogIdx := int32(len(s.Node.info.log) - 1)
+		s.Node.info.matchIndexNew = make([]int, s.Node.info.newClusterCount)
+		s.Node.info.nextIndexNew = make([]int, s.Node.info.newClusterCount)
+
+		for i := range s.Node.info.nextIndexNew {
+			s.Node.info.nextIndexNew[i] = int(lastLogIdx) + 1
+			s.Node.info.matchIndexNew[i] = -1
+		}
+		s.Node.info.matchIndexNew[s.Node.info.idNew] = int(lastLogIdx)
+		s.Node.info.nextIndexNew[s.Node.info.idNew] = int(lastLogIdx) + 1
+
 		// Append entry to log
 		s.Node.appendToLog(comm.Entry{
 			Term:    int32(s.Node.info.currentTerm),
+			Key:     "-",
 			Value:   in.NewClusterAddresses,
 			Command: int32(NewOldConfig),
 		})
@@ -281,11 +265,24 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 			s.Node.info.isJointConsensus = true
 			s.Node.info.newClusterAddresses = parseAddresses(entry.Value)
 			s.Node.info.newClusterCount = len(s.Node.info.newClusterAddresses)
+			s.Node.info.idNew = -1
+			for index, address := range s.Node.info.newClusterAddresses {
+				if s.Node.address.String() == address.String() {
+					s.Node.info.idNew = index
+					break
+				}
+			}
 
 		} else if entry.Command == int32(NewConfig) {
 			s.Node.info.isJointConsensus = false
 			s.Node.info.clusterCount = s.Node.info.newClusterCount
 			s.Node.info.clusterAddresses = s.Node.info.newClusterAddresses
+
+			if s.Node.info.idNew == -1 {
+				defer s.Node.Stop()
+			} else {
+				s.Node.info.id = s.Node.info.idNew
+			}
 		}
 	}
 
