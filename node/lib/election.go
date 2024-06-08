@@ -39,16 +39,16 @@ func (node *Node) ElectionTimerHandler() {
 	for node.Running && node.state == Follower {
 		select {
 		case <-node.electionTimer.C:
-			node.mutex.Lock()
+			node.timerMutex.Lock()
 			log.Println("[Election] Election timeout occured")
 			node.startElection()
 			node.resetElectionTimer()
-			node.mutex.Unlock()
+			node.timerMutex.Unlock()
 		case <-node.electionResetSignal:
 			// log.Println("[Election] Received election reset signal")
-			node.mutex.Lock()
+			node.timerMutex.Lock()
 			node.resetElectionTimer()
-			node.mutex.Unlock()
+			node.timerMutex.Unlock()
 		}
 	}
 }
@@ -58,6 +58,7 @@ func (node *Node) startElection() {
 	log.Printf("[Election Start] Current TERM BEFORE: %v", node.info.currentTerm)
 	node.info.currentTerm++
 	log.Printf("[Election Start] START ELECTION; TERM: %v; CLUSTER SIZE: %v", node.info.currentTerm, node.info.clusterCount)
+	// log.Printf("[DEBUG] State is now candidate")
 	node.state = Candidate
 	lastLogIdx := int32(len(node.info.log) - 1)
 
@@ -70,6 +71,7 @@ func (node *Node) startElection() {
 			log.Printf("[Election] ELECTED; TERM: %v; isJointConsensus: TRUE", node.info.currentTerm)
 			node.info.serverUp = true
 			node.info.leaderId = node.info.id
+			// log.Printf("[DEBUG] State is now leader")
 			node.state = Leader
 
 			// TODO: check and only commit the ones in leader term
@@ -94,21 +96,26 @@ func (node *Node) startElection() {
 				node.info.nextIndexNew[i] = int(lastLogIdx) + 1
 				node.info.matchIndexNew[i] = -1
 			}
-			node.info.matchIndexNew[node.info.idNew] = int(lastLogIdx)
-			node.info.nextIndexNew[node.info.idNew] = int(lastLogIdx) + 1
+			if node.info.newId != -1 {
+				node.info.matchIndexNew[node.info.newId] = int(lastLogIdx)
+				node.info.nextIndexNew[node.info.newId] = int(lastLogIdx) + 1
+			}
 			// log.Printf("[Election] matchIndex: %v", node.info.matchIndex)
 			// log.Printf("[Election] nextIndex: %v", node.info.nextIndex)
 
 			node.startAppendEntries()
 		} else {
-			node.state = Follower
 			log.Print("[Election] Not enough vote!")
+			// log.Printf("[DEBUG] State is now follower")
+			node.state = Follower
 		}
 	} else {
 		if vote > node.info.clusterCount/2 {
 			log.Printf("[Election] ELECTED; TERM: %v; isJointConsensus: FALSE", node.info.currentTerm)
 			node.info.serverUp = true
 			node.info.leaderId = node.info.id
+
+			// log.Printf("[DEBUG] State is now leader")
 			node.state = Leader
 
 			// TODO: check and only commit the ones in leader term
@@ -128,8 +135,9 @@ func (node *Node) startElection() {
 
 			node.startAppendEntries()
 		} else {
-			node.state = Follower
 			log.Print("[Election] Not enough vote!")
+			// log.Printf("[DEBUG] State is now follower")
+			node.state = Follower
 		}
 	}
 
@@ -155,11 +163,11 @@ func (node *Node) sendElection(address []net.TCPAddr, interval time.Duration) in
 			continue
 		}
 
-		//log.Printf("[Election] node is : %v", node.address.String())
-		//log.Printf("[Election] Asking for vote from node: %v", peer)
+		log.Printf("[Election] node is : %v", node.address.String())
+		log.Printf("[Election] Asking for vote from node: %v", peer)
 
 		waitGroup.Add(1)
-		ctx, cancel := context.WithTimeout(context.Background(), 2*interval)
+		ctx, cancel := context.WithTimeout(context.Background(), interval/2)
 
 		go func(peerAddr string) {
 			defer cancel()
@@ -183,6 +191,8 @@ func (node *Node) sendElection(address []net.TCPAddr, interval time.Duration) in
 					log.Printf("[Election] Received higher term %v from node, turns to follower %v", peer.String(), node.info.currentTerm)
 					log.Printf("[Election] [UPDATE TERM] Before TERM: %v, After TERM: %v", node.info.currentTerm, response.Term)
 					node.info.currentTerm = int(response.Term)
+
+					// log.Printf("[DEBUG] State is now follower")
 					node.state = Follower
 				}
 			})
@@ -208,16 +218,16 @@ func (node *Node) sendElection(address []net.TCPAddr, interval time.Duration) in
 
 func (node *Node) startAppendEntries() {
 	// Unlock mutex from election
-	node.mutex.Unlock()
+	node.timerMutex.Unlock()
 
-	interval := time.Duration(node.info.timeoutAvgTime) * time.Second / 100 / 6
+	interval := time.Duration(node.info.timeoutAvgTime) * time.Second / 100 / 3
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for node.state == Leader {
 		for range ticker.C {
 			aliveNode := 0
-			aliveNode = node.sendAppendEntries(node.info.clusterAddresses, interval)
+			aliveNode = node.sendAppendEntries(node.info.clusterAddresses, interval, node.info.matchIndex, node.info.nextIndex)
 			if node.state != Leader {
 				return
 			}
@@ -225,7 +235,7 @@ func (node *Node) startAppendEntries() {
 			// TODO: Test joint consensus & improve by concurrency
 			if node.info.isJointConsensus {
 				newAliveNode := 0
-				newAliveNode = node.sendAppendEntries(node.info.newClusterAddresses, interval)
+				newAliveNode = node.sendAppendEntries(node.info.newClusterAddresses, interval, node.info.matchIndexNew, node.info.nextIndexNew)
 				if node.state != Leader {
 					return
 				}
@@ -243,6 +253,7 @@ func (node *Node) startAppendEntries() {
 				if 2*aliveNode <= node.info.clusterCount {
 					node.info.serverUp = false
 				} else {
+					// node.Status()
 					node.updateMajority()
 					node.info.serverUp = true
 				}
@@ -251,17 +262,18 @@ func (node *Node) startAppendEntries() {
 	}
 }
 
-func (node *Node) sendAppendEntries(address []net.TCPAddr, interval time.Duration) int {
+func (node *Node) sendAppendEntries(address []net.TCPAddr, interval time.Duration, matchIndex []int, nextIndex []int) int {
 	var waitGroup sync.WaitGroup
-	heartbeatCh := make(chan bool, node.info.clusterCount)
+	heartbeatCh := make(chan bool, len(address))
 
-	for index, peer := range node.info.clusterAddresses {
+	// log.Printf("[Heartbeat] Sending heartbeats")
+	for index, peer := range address {
 		if peer.String() == node.address.String() {
 			continue
 		}
 		// log.Printf("[Heartbeat] Sending heartbeat to node %v: %v", index, peer)
 
-		prevLogIndex := max(node.info.nextIndex[index]-1, -1)
+		prevLogIndex := max(nextIndex[index]-1, -1)
 		prevLogTerm := int32(0)
 		if prevLogIndex > -1 {
 			prevLogTerm = node.info.log[prevLogIndex].Term
@@ -295,7 +307,7 @@ func (node *Node) sendAppendEntries(address []net.TCPAddr, interval time.Duratio
 		// log.Printf("[Heartbeat] data entries: %v", data.Entries)
 
 		waitGroup.Add(1)
-		ctx, cancel := context.WithTimeout(context.Background(), 2*interval)
+		ctx, cancel := context.WithTimeout(context.Background(), interval/2)
 
 		go func(peerAddr string) {
 			defer cancel()
@@ -305,21 +317,33 @@ func (node *Node) sendAppendEntries(address []net.TCPAddr, interval time.Duratio
 				response, err := node.grpcClient.AppendEntries(ctx, data)
 				if err != nil {
 					log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
-					log.Printf("[Heartbeat] Node is a: %v", node.state)
+					// log.Printf("[Heartbeat] Node is a: %v", node.state)
 					heartbeatCh <- false
 				} else {
 					if response.Term > int32(node.info.currentTerm) {
 						log.Printf("[Heartbeat] Received higher term %v from node %v, turns to follower", response.Term, peer.String())
 						log.Printf("[Heartbeat] [UPDATE TERM] Before TERM: %v, After TERM: %v", node.info.currentTerm, response.Term)
 						node.info.currentTerm = int(response.Term)
+
+						// log.Printf("[DEBUG] State is now follower")
 						node.state = Follower
 						return
 					} else {
 						if response.Success {
-							node.info.matchIndex[index] = int(prevLogIndex) + len(sentEntries)
-							node.info.nextIndex[index] = node.info.matchIndex[index] + 1
+							matchIndex[index] = int(prevLogIndex) + len(sentEntries)
+							nextIndex[index] = matchIndex[index] + 1
+							// log.Printf("[DEBUG] Heartbeat success, matchIndex is now %v", matchIndex[index])
+							// log.Printf("nextIndex: %v", node.info.nextIndex)
+							// log.Printf("matchIndex: %v", node.info.matchIndex)
+							// log.Printf("nextIndexNew: %v", node.info.nextIndexNew)
+							// log.Printf("matchIndexNew: %v", node.info.matchIndexNew)
 						} else {
-							node.info.nextIndex[index]--
+							nextIndex[index]--
+							// log.Printf("[DEBUG] Heartbeat failure, matchIndex is now %v", matchIndex[index])
+							// log.Printf("nextIndex: %v", node.info.nextIndex)
+							// log.Printf("matchIndex: %v", node.info.matchIndex)
+							// log.Printf("nextIndexNew: %v", node.info.nextIndexNew)
+							// log.Printf("matchIndexNew: %v", node.info.matchIndexNew)
 						}
 					}
 					heartbeatCh <- true
@@ -349,9 +373,10 @@ func (node *Node) updateMajority() {
 	if node.info.isJointConsensus {
 		newMajority := node.getMajority(node.info.matchIndexNew, node.info.newClusterCount)
 		node.CommitLogEntries(min(majority, newMajority))
-		log.Printf("[DEBUG] majority: %v, newMajoirity: %v", majority, newMajority)
+		// log.Printf("[DEBUG] majority: %v, newMajoirity: %v", majority, newMajority)
 	} else {
 		node.CommitLogEntries(majority)
+		// log.Printf("[DEBUG] majority: %v", majority)
 	}
 
 }

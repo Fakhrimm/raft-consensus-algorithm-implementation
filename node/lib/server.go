@@ -9,8 +9,8 @@ import (
 
 type server struct {
 	comm.UnimplementedCommServiceServer
-	Node  *Node
-	mutex Mutex
+	Node        *Node
+	serverMutex Mutex
 }
 
 // Application purposes
@@ -116,7 +116,7 @@ func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (
 		s.Node.appendToLog(comm.Entry{
 			Term:    int32(s.Node.info.currentTerm),
 			Key:     in.Key,
-			Value:   "",
+			Value:   "-",
 			Command: int32(Delete),
 		})
 
@@ -178,10 +178,10 @@ func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembership
 		// Set it in the node
 		s.Node.info.newClusterAddresses = newClusterAddresses
 		s.Node.info.newClusterCount = len(newClusterAddresses)
-		s.Node.info.idNew = -1
+		s.Node.info.newId = -1
 		for index, address := range newClusterAddresses {
 			if s.Node.address.String() == address.String() {
-				s.Node.info.idNew = index
+				s.Node.info.newId = index
 				break
 			}
 		}
@@ -198,8 +198,6 @@ func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembership
 			s.Node.info.nextIndexNew[i] = int(lastLogIdx) + 1
 			s.Node.info.matchIndexNew[i] = -1
 		}
-		s.Node.info.matchIndexNew[s.Node.info.idNew] = int(lastLogIdx)
-		s.Node.info.nextIndexNew[s.Node.info.idNew] = int(lastLogIdx) + 1
 
 		// Append entry to log
 		s.Node.appendToLog(comm.Entry{
@@ -215,6 +213,9 @@ func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembership
 
 // Raft purposes
 func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesRequest) (*comm.AppendEntriesResponse, error) {
+	s.Node.nodeMutex.Lock()
+	defer s.Node.nodeMutex.Unlock()
+
 	//Reply false if term from leader < currentTerm (§5.1)
 	if in.Term < int32(s.Node.info.currentTerm) {
 		return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
@@ -230,12 +231,14 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 
 	// Reply false if log does not contain an entry at prevLogIndex
 	if len(s.Node.info.log) <= int(in.PrevLogIndex) {
+		log.Printf("[AppendEntries] No entry, len is %v against index of %v", len(s.Node.info.log), in.PrevLogIndex)
 		return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
 	}
 
 	if in.PrevLogIndex >= 0 {
 		// Reply false if log entry term at prevLogIndex does not match prevLogTerm (§5.3)
 		if s.Node.info.log[in.PrevLogIndex].Term != in.PrevLogTerm {
+			log.Printf("[AppendEntries] no match")
 			return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
 		}
 	}
@@ -244,6 +247,9 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 	if len(s.Node.info.log) > 0 {
 		maxIdx := max(0, in.PrevLogIndex+1)
 		overwrite = maxIdx < int32(len(s.Node.info.log))
+
+		// log.Printf("[DEBUG] taking index of %v from %v", in.PrevLogIndex+1, len(s.Node.info.log))
+
 		s.Node.info.log = s.Node.info.log[:maxIdx]
 	}
 
@@ -254,10 +260,10 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 			Value:   entry.Value,
 			Command: entry.Command,
 		}
+		s.Node.info.log = append(s.Node.info.log, newLog)
 
 		if !overwrite {
 			log.Printf("[Persistence] writing log via append entries")
-			s.Node.info.log = append(s.Node.info.log, newLog)
 			s.Node.SaveLog(newLog)
 		}
 
@@ -265,10 +271,10 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 			s.Node.info.isJointConsensus = true
 			s.Node.info.newClusterAddresses = parseAddresses(entry.Value)
 			s.Node.info.newClusterCount = len(s.Node.info.newClusterAddresses)
-			s.Node.info.idNew = -1
+			s.Node.info.newId = -1
 			for index, address := range s.Node.info.newClusterAddresses {
 				if s.Node.address.String() == address.String() {
-					s.Node.info.idNew = index
+					s.Node.info.newId = index
 					break
 				}
 			}
@@ -278,10 +284,10 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 			s.Node.info.clusterCount = s.Node.info.newClusterCount
 			s.Node.info.clusterAddresses = s.Node.info.newClusterAddresses
 
-			if s.Node.info.idNew == -1 {
+			if s.Node.info.newId == -1 {
 				defer s.Node.Stop()
 			} else {
-				s.Node.info.id = s.Node.info.idNew
+				s.Node.info.id = s.Node.info.newId
 			}
 		}
 	}
@@ -303,7 +309,7 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 
 // TODO: handle joint election
 func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (*comm.RequestVoteResponse, error) {
-	s.mutex.Lock()
+	s.serverMutex.Lock()
 
 	vote := false
 	term := s.Node.info.currentTerm
@@ -324,6 +330,6 @@ func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (
 	} else {
 		log.Printf("[Election] Node %v requests for vote, declined", in.CandidateId)
 	}
-	s.mutex.Unlock()
+	s.serverMutex.Unlock()
 	return &comm.RequestVoteResponse{Term: int32(term), VoteGranted: vote}, nil
 }

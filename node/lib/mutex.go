@@ -11,14 +11,14 @@ type Mutex struct {
 }
 
 func (m *Mutex) Lock() {
-	if m.isLocked {
-		log.Printf("[System] [Mutex] Tried locking a locked mutex")
-		return
-	}
+	// if m.isLocked {
+	// log.Printf("[System] [Mutex] Tried locking a locked mutex")
+	// return
+	// }
 
-	m.isLocked = true
 	// log.Printf("[System] [Mutex] Locking mutex")
 	m.mutex.Lock()
+	m.isLocked = true
 }
 
 func (m *Mutex) Unlock() {

@@ -35,10 +35,10 @@ func (node *Node) LoadLogs() {
 			node.info.isJointConsensus = true
 			node.info.newClusterAddresses = parseAddresses(entry.Value)
 			node.info.newClusterCount = len(node.info.newClusterAddresses)
-			node.info.idNew = -1
+			node.info.newId = -1
 			for index, address := range node.info.newClusterAddresses {
 				if node.address.String() == address.String() {
-					node.info.idNew = index
+					node.info.newId = index
 					break
 				}
 			}
@@ -47,10 +47,10 @@ func (node *Node) LoadLogs() {
 			node.info.clusterCount = node.info.newClusterCount
 			node.info.clusterAddresses = node.info.newClusterAddresses
 
-			if node.info.idNew == -1 {
+			if node.info.newId == -1 {
 				defer node.Stop()
 			} else {
-				node.info.id = node.info.idNew
+				node.info.id = node.info.newId
 			}
 		}
 

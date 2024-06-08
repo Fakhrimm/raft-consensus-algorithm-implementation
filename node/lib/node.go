@@ -37,7 +37,7 @@ const (
 type Info struct {
 	// Persistent
 	id                  int
-	idNew               int
+	newId               int
 	leaderId            int
 	currentTerm         int
 	votedFor            int
@@ -63,8 +63,9 @@ type Info struct {
 
 type Node struct {
 	// General attribute
-	Running bool
-	mutex   Mutex
+	Running    bool
+	nodeMutex  Mutex
+	timerMutex Mutex
 
 	// Grpc purposes
 	address    net.TCPAddr
@@ -104,7 +105,7 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, 
 	log.Printf("Check: %v", node.info.clusterAddresses)
 
 	if isJointConsensus {
-		node.info.newClusterAddresses, node.info.newClusterCount, node.info.idNew = node.ReadServerList(newHostfile)
+		node.info.newClusterAddresses, node.info.newClusterCount, node.info.newId = node.ReadServerList(newHostfile)
 		node.info.isJointConsensus = isJointConsensus
 	}
 
@@ -116,6 +117,8 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, 
 	// node.CheckSanity()
 	log.Printf("Node initialization complete with address %v and id %v", node.address.String(), node.info.id)
 	node.Running = true
+
+	// log.Printf("[DEBUG] State is now follower")
 	node.state = Follower
 
 	go node.ElectionTimerHandler()
@@ -222,7 +225,18 @@ func (node *Node) Call(address string, callable func()) {
 }
 
 func (node *Node) CommitLogEntries(newCommitIndex int) {
+	if newCommitIndex <= node.info.commitIndex {
+		return
+	}
+	// log.Printf("[DEBUG] locking nodemutex")
+	// node.nodeMutex.Lock()
 
+	// log.Printf("\n\n[DEBUG] committing index %v with current commit idx is %v", newCommitIndex, node.info.commitIndex)
+	// log.Printf("nextIndex: %v", node.info.nextIndex)
+	// log.Printf("matchIndex: %v", node.info.matchIndex)
+	// log.Printf("nextIndexNew: %v", node.info.nextIndexNew)
+	// log.Printf("matchIndexNew: %v", node.info.matchIndexNew)
+	// log.Printf("\n\n")
 	for i := node.info.commitIndex + 1; i <= newCommitIndex; i++ {
 		entry := node.info.log[i]
 
@@ -245,11 +259,23 @@ func (node *Node) CommitLogEntries(newCommitIndex int) {
 				if contained {
 					node.info.clusterAddresses = node.info.newClusterAddresses
 					node.info.clusterCount = node.info.newClusterCount
-					node.info.id = node.info.idNew
+					node.info.id = node.info.newId
 					node.info.isJointConsensus = false
 
 					// TODO: Stay leader or reset?
-					node.info.leaderId = node.info.idNew
+					node.info.leaderId = node.info.newId
+
+					lastLogIdx := int32(len(node.info.log) - 1)
+					node.info.matchIndex = make([]int, node.info.clusterCount)
+					node.info.nextIndex = make([]int, node.info.clusterCount)
+
+					for i := range node.info.nextIndex {
+						node.info.nextIndex[i] = int(lastLogIdx) + 1
+						node.info.matchIndex[i] = -1
+					}
+					node.info.matchIndex[node.info.id] = int(lastLogIdx)
+					node.info.nextIndex[node.info.id] = int(lastLogIdx) + 1
+
 				} else {
 					log.Printf("[CommitLogEntries] Node %v is not in new cluster but its a leader, precedes to kill itself", node.address.String())
 					node.Stop()
@@ -263,41 +289,48 @@ func (node *Node) CommitLogEntries(newCommitIndex int) {
 					Key:     "-",
 					Value:   "-",
 				}
-				log.Printf("[DEBUG] log is %v", i)
 				node.appendToLog(newEntry)
 			}
 		}
 	}
 	node.info.commitIndex = newCommitIndex
+
+	// log.Printf("[DEBUG] unlocking nodemutex")
+	// node.nodeMutex.Unlock()
 }
 
 func (node *Node) appendToLog(newEntry comm.Entry) {
-	node.mutex.Lock()
+	// log.Printf("[DEBUG] locking nodemutex")
+	// node.nodeMutex.Lock()
 	node.info.log = append(node.info.log, newEntry)
 
 	node.info.matchIndex[node.info.id] = len(node.info.log) - 1
 	node.info.nextIndex[node.info.id] = len(node.info.log)
 
-	for index, nextIndex := range node.info.nextIndex {
-		if nextIndex == node.info.matchIndex[index] {
-			node.info.nextIndex[index]++
-		}
-	}
+	// for index, nextIndex := range node.info.nextIndex {
+	// 	if nextIndex == node.info.matchIndex[index] {
+	// 		node.info.nextIndex[index]++
+	// 	}
+	// }
 
 	if node.info.isJointConsensus {
-		node.info.matchIndexNew[node.info.idNew] = len(node.info.log) - 1
-		node.info.nextIndexNew[node.info.idNew] = len(node.info.log)
-
-		for index, nextIndex := range node.info.nextIndex {
-			if nextIndex == node.info.matchIndexNew[index] {
-				node.info.nextIndexNew[index]++
-			}
+		if node.info.newId != -1 {
+			node.info.matchIndexNew[node.info.newId] = len(node.info.log) - 1
+			node.info.nextIndexNew[node.info.newId] = len(node.info.log)
 		}
+
+		// 	for index, nextIndex := range node.info.nextIndexNew {
+		// 		if nextIndex == node.info.matchIndexNew[index] {
+		// 			node.info.nextIndexNew[index]++
+		// 		}
+		// 	}
 	}
 
-	log.Printf("[Persistence] writing log via leader request")
+	log.Printf("[Persistence] writing log via request")
 	node.SaveLog(newEntry)
-	node.mutex.Unlock()
+
+	// log.Printf("[DEBUG] locking nodemutex")
+	// node.nodeMutex.Unlock()
 }
 
 func (node *Node) Stop() {
@@ -305,7 +338,7 @@ func (node *Node) Stop() {
 }
 
 func (node *Node) Status() {
-	log.Printf("\n\nNode Info:")
+	log.Printf("\n\n---------------Node Info:")
 	log.Printf("id: %v", node.info.id)
 	log.Printf("state: %v", node.state)
 	log.Printf("leaderId: %v", node.info.leaderId)
@@ -314,33 +347,34 @@ func (node *Node) Status() {
 	// log.Printf("lastApplied %v", node.info.lastApplied)
 	log.Printf("clusterAddresses: %v", node.info.clusterAddresses)
 	log.Printf("clusterCount: %v", node.info.clusterCount)
-	log.Printf("timeoutAvgTime%v", node.info.timeoutAvgTime)
-	log.Printf("isJointConsensus %v", node.info.isJointConsensus)
+	log.Printf("timeoutAvgTime: %v", node.info.timeoutAvgTime)
+	log.Printf("isJointConsensus: %v", node.info.isJointConsensus)
 
 	log.Printf("/\n\nlog info:")
 	for index, entry := range node.info.log {
 		log.Printf("[%v]: command: %v, key:%v, value:%v, term:%v", index, entry.Command, entry.Key, entry.Value, entry.Term)
 	}
 
-	// if node.info.isJointConsensus {
-	log.Printf("/\n\nJoint Consensus info:")
+	if node.info.isJointConsensus {
+		log.Printf("/\n\nJoint Consensus info:")
 
-	log.Printf("newClusterAddresses: %v", node.info.newClusterAddresses)
-	log.Printf("newClusterCount: %v", node.info.newClusterCount)
-	// }
+		log.Printf("newId: %v", node.info.newId)
+		log.Printf("newClusterAddresses: %v", node.info.newClusterAddresses)
+		log.Printf("newClusterCount: %v", node.info.newClusterCount)
+	}
 
-	// if node.state == Leader {
-	log.Printf("/\n\nLeader info:")
+	if node.state == Leader {
+		log.Printf("/\n\nLeader info:")
 
-	log.Printf("serverUp: %v", node.info.serverUp)
-	log.Printf("nextIndex: %v", node.info.nextIndex)
-	log.Printf("matchIndex: %v", node.info.matchIndex)
+		log.Printf("serverUp: %v", node.info.serverUp)
+		log.Printf("nextIndex: %v", node.info.nextIndex)
+		log.Printf("matchIndex: %v", node.info.matchIndex)
 
-	// if node.info.isJointConsensus {
-	log.Printf("nextIndexNew: %v", node.info.nextIndexNew)
-	log.Printf("matchIndexNew: %v", node.info.matchIndexNew)
-	// }
-	// }
+		if node.info.isJointConsensus {
+			log.Printf("nextIndexNew: %v", node.info.nextIndexNew)
+			log.Printf("matchIndexNew: %v", node.info.matchIndexNew)
+		}
+	}
 }
 
 // func (node *Node) PrepNewConfig(info string) {
