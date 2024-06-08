@@ -3,7 +3,6 @@ package node
 import (
 	"Node/grpc/comm"
 	"bufio"
-	"context"
 	"log"
 	"net"
 	"net/http"
@@ -97,6 +96,7 @@ func NewNode(addr string) *Node {
 
 func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, isJointConsensus bool) {
 	log.Printf("Initializing node")
+	node.LoadLogs()
 	node.InitServer()
 
 	node.info.clusterAddresses, node.info.clusterCount = node.ReadServerList(hostfile)
@@ -219,34 +219,6 @@ func (node *Node) Call(address string, callable func()) {
 	conn.Close()
 }
 
-func (node *Node) CheckSanity() {
-	key := "__CheckSanity__"
-
-	oldVal := node.app.Get(key)
-	log.Printf("Checking own address of %v", node.address.String())
-	node.Call(node.address.String(), func() {
-		responseTest, errTest := node.grpcClient.Ping(context.Background(), &comm.BasicRequest{})
-		if errTest != nil {
-			log.Printf("Sanity check error: %v", errTest)
-		}
-		log.Printf("Test Response: %v", responseTest.Message)
-
-		responseSet, errSet := node.grpcClient.SetValue(context.Background(), &comm.SetValueRequest{Key: key, Value: "OK"})
-		if errSet != nil {
-			log.Printf("Sanity check error: %v", errSet)
-		}
-		log.Printf("Set Response: %v", responseSet.Message)
-
-		responseGet, errGet := node.grpcClient.GetValue(context.Background(), &comm.GetValueRequest{Key: key})
-		if errGet != nil {
-			log.Printf("Sanity check error: %v", errGet)
-		}
-		log.Printf("Get Response: %v", responseGet.Value)
-	})
-
-	node.app.Set(key, oldVal)
-}
-
 func (node *Node) CommitLogEntries(newCommitIndex int) {
 
 	for i := node.info.commitIndex + 1; i <= newCommitIndex; i++ {
@@ -302,6 +274,9 @@ func (node *Node) appendToLog(newEntry comm.Entry) {
 			node.info.nextIndex[index]++
 		}
 	}
+
+	log.Printf("[Persistence] writing log via leader request")
+	node.SaveLog(newEntry)
 	node.mutex.Unlock()
 }
 

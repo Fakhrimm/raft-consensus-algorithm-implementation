@@ -48,7 +48,7 @@ func (s *server) Status(ctx context.Context, in *comm.BasicRequest) (*comm.Basic
 
 	log.Printf("/\n\nlog info:")
 	for index, entry := range s.Node.info.log {
-		log.Printf("[%v]: %v %v %v", index, entry.Command, entry.Key, entry.Value)
+		log.Printf("[%v]: command: %v, key:%v, value:%v, term:%v", index, entry.Command, entry.Key, entry.Value, entry.Term)
 	}
 
 	if s.Node.info.isJointConsensus {
@@ -71,7 +71,7 @@ func (s *server) Status(ctx context.Context, in *comm.BasicRequest) (*comm.Basic
 		}
 	}
 
-	s.Node.SaveLogs()
+	// s.Node.SaveLogs()
 
 	return &comm.BasicResponse{Code: 200, Message: "STAT"}, nil
 }
@@ -245,7 +245,7 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 	s.Node.info.leaderId = int(in.LeaderId)
 
 	// Reply false if log does not contain an entry at prevLogIndex
-	if len(s.Node.info.log) < int(in.PrevLogIndex) {
+	if len(s.Node.info.log) <= int(in.PrevLogIndex) {
 		return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
 	}
 
@@ -256,8 +256,10 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 		}
 	}
 
+	overwrite := false
 	if len(s.Node.info.log) > 0 {
 		maxIdx := max(0, in.PrevLogIndex+1)
+		overwrite = maxIdx < int32(len(s.Node.info.log))
 		s.Node.info.log = s.Node.info.log[:maxIdx]
 	}
 
@@ -268,7 +270,12 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 			Value:   entry.Value,
 			Command: entry.Command,
 		}
-		s.Node.info.log = append(s.Node.info.log, newLog)
+
+		if !overwrite {
+			log.Printf("[Persistence] writing log via append entries")
+			s.Node.info.log = append(s.Node.info.log, newLog)
+			s.Node.SaveLog(newLog)
+		}
 
 		if entry.Command == int32(NewOldConfig) {
 			s.Node.info.isJointConsensus = true
@@ -280,6 +287,11 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 			s.Node.info.clusterCount = s.Node.info.newClusterCount
 			s.Node.info.clusterAddresses = s.Node.info.newClusterAddresses
 		}
+	}
+
+	if overwrite {
+		log.Printf("[Persistence] rewriting logs because of conflict")
+		s.Node.SaveLogs()
 	}
 
 	// If leaderCommit > commitIndex, set commitIndex =

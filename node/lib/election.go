@@ -80,7 +80,7 @@ func (node *Node) startElection() {
 			node.info.nextIndex = make([]int, node.info.clusterCount)
 
 			for i := range node.info.nextIndex {
-				node.info.nextIndex[i] = int(lastLogIdx)
+				node.info.nextIndex[i] = int(lastLogIdx) + 1
 				node.info.matchIndex[i] = -1
 			}
 			node.info.matchIndex[node.info.id] = int(lastLogIdx)
@@ -91,7 +91,7 @@ func (node *Node) startElection() {
 			node.info.nextIndexNew = make([]int, node.info.newClusterCount)
 
 			for i := range node.info.nextIndexNew {
-				node.info.nextIndexNew[i] = int(lastLogIdx)
+				node.info.nextIndexNew[i] = int(lastLogIdx) + 1
 				node.info.matchIndexNew[i] = -1
 			}
 			node.info.matchIndexNew[node.info.id] = int(lastLogIdx)
@@ -118,7 +118,7 @@ func (node *Node) startElection() {
 			node.info.nextIndex = make([]int, node.info.clusterCount)
 
 			for i := range node.info.nextIndex {
-				node.info.nextIndex[i] = int(lastLogIdx)
+				node.info.nextIndex[i] = int(lastLogIdx) + 1
 				node.info.matchIndex[i] = -1
 			}
 			node.info.matchIndex[node.info.id] = int(lastLogIdx)

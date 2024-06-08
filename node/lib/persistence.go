@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func (node *Node) LoadLogs(filename string) []comm.Entry {
+func (node *Node) LoadLogs() {
 	log.Printf("Reading saved log")
 	filepath := fmt.Sprintf("../config/%vport%v.storage", node.address.IP, node.address.Port)
 
@@ -18,7 +18,7 @@ func (node *Node) LoadLogs(filename string) []comm.Entry {
 	file, err := os.OpenFile(filepath, os.O_CREATE, 0644)
 	if err != nil {
 		log.Printf("Failed to load log file")
-		return logList
+		return
 	}
 	defer file.Close()
 
@@ -36,7 +36,7 @@ func (node *Node) LoadLogs(filename string) []comm.Entry {
 		index++
 	}
 
-	return logList
+	node.info.log = logList
 }
 
 func (node *Node) SaveLogs() {
@@ -44,7 +44,7 @@ func (node *Node) SaveLogs() {
 	filepath := fmt.Sprintf("../config/%vport%v.storage", node.address.IP, node.address.Port)
 
 	for _, entry := range node.info.log {
-		entryString := fmt.Sprintf("%v %v %v\n", entry.Command, entry.Key, entry.Value)
+		entryString := fmt.Sprintf("%v %v %v %v\n", entry.Command, entry.Key, entry.Value, entry.Term)
 		content += entryString
 	}
 
@@ -58,7 +58,7 @@ func (node *Node) SaveLogs() {
 }
 
 func (node *Node) SaveLog(entry comm.Entry) {
-	content := fmt.Sprintf("%v %v %v\n", entry.Command, entry.Key, entry.Value)
+	content := fmt.Sprintf("%v %v %v %v\n", entry.Command, entry.Key, entry.Value, entry.Term)
 	filepath := fmt.Sprintf("../config/%vport%v.storage", node.address.IP, node.address.Port)
 
 	file, err := os.OpenFile(filepath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
@@ -79,7 +79,8 @@ func (node *Node) ParseLog(entryString string) comm.Entry {
 	var command int32
 	var key string
 	var value string
-	_, err := fmt.Sscanf(entryString, "%d %s %s", &command, &key, &value)
+	var term int32
+	_, err := fmt.Sscanf(entryString, "%d %s %s %d", &command, &key, &value, &term)
 
 	if err != nil {
 		log.Printf("Error parsing log entry: %v", err)
@@ -92,5 +93,6 @@ func (node *Node) ParseLog(entryString string) comm.Entry {
 		Command: command,
 		Key:     key,
 		Value:   value,
+		Term:    term,
 	}
 }
