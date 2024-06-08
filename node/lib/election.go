@@ -190,39 +190,40 @@ func (node *Node) sendElection(address []net.TCPAddr, interval time.Duration) in
 }
 
 func (node *Node) startAppendEntries() {
+	// Unlock mutex from election
+	node.mutex.Unlock()
+
 	interval := time.Duration(node.info.timeoutAvgTime) * time.Second / 100 / 6
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	go func() {
-		for node.state == Leader {
-			for range ticker.C {
-				aliveNode := 0
-				aliveNode = node.sendAppendEntries(node.info.clusterAddresses, interval)
+	for node.state == Leader {
+		for range ticker.C {
+			aliveNode := 0
+			aliveNode = node.sendAppendEntries(node.info.clusterAddresses, interval)
 
-				// TODO: Test joint consensus & improve by concurrency
-				if node.info.isJointConsensus {
-					newAliveNode := 0
-					newAliveNode = node.sendAppendEntries(node.info.newClusterAddresses, interval)
+			// TODO: Test joint consensus & improve by concurrency
+			if node.info.isJointConsensus {
+				newAliveNode := 0
+				newAliveNode = node.sendAppendEntries(node.info.newClusterAddresses, interval)
 
-					if (2*aliveNode <= node.info.clusterCount) && (2*newAliveNode <= node.info.newClusterCount) {
-						node.info.serverUp = false
-					} else {
-						node.updateMajority()
-						node.info.serverUp = true
-					}
+				if (2*aliveNode <= node.info.clusterCount) && (2*newAliveNode <= node.info.newClusterCount) {
+					node.info.serverUp = false
 				} else {
-					// log.Printf("[Heartbeat] Total received heartbeat is %v/%v", aliveNodeCount, node.info.clusterCount)
-					if 2*aliveNode <= node.info.clusterCount {
-						node.info.serverUp = false
-					} else {
-						node.updateMajority()
-						node.info.serverUp = true
-					}
+					node.updateMajority()
+					node.info.serverUp = true
+				}
+			} else {
+				// log.Printf("[Heartbeat] Total received heartbeat is %v/%v", aliveNodeCount, node.info.clusterCount)
+				if 2*aliveNode <= node.info.clusterCount {
+					node.info.serverUp = false
+				} else {
+					node.updateMajority()
+					node.info.serverUp = true
 				}
 			}
 		}
-	}()
+	}
 }
 
 func (node *Node) sendAppendEntries(address []net.TCPAddr, interval time.Duration) int {
