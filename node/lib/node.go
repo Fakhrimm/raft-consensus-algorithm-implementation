@@ -128,7 +128,7 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, 
 		grpcweb.WithOriginFunc(func(origin string) bool { return true }),
 	)
 
-	// 0.0.0.0:60000 (grpc) -> 0.0.0.0:70000 (grpc-web) (added with 10000)
+	// 0.0.0.0:60000 (grpc) -> 0.0.0.0:50000 (grpc-web) (added with 10000)
 
 	addr := strings.Split(node.address.String(), ":")
 	port, _ := strconv.Atoi(addr[1])

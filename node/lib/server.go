@@ -5,11 +5,13 @@ import (
 	"context"
 	"log"
 	"net"
+	"sync"
 )
 
 type server struct {
 	comm.UnimplementedCommServiceServer
-	Node *Node
+	Node  *Node
+	mutex sync.Mutex
 }
 
 // Application purposes
@@ -233,6 +235,10 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 	//Reply false if term from leader < currentTerm (§5.1)
 	if in.Term < int32(s.Node.info.currentTerm) {
 		return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
+	} else if in.Term > int32(s.Node.info.currentTerm) {
+		// Update currentTerm if leaderTerm > currentTerm
+		log.Printf("[AppendEntries] [UPDATE TERM] Before: %v, After: %v", s.Node.info.currentTerm, in.Term)
+		s.Node.info.currentTerm = int(in.Term)
 	}
 
 	// Reset election timer
@@ -289,7 +295,7 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 
 // TODO: handle joint election
 func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (*comm.RequestVoteResponse, error) {
-	log.Printf("")
+	s.mutex.Lock()
 
 	vote := false
 	term := s.Node.info.currentTerm
@@ -301,7 +307,8 @@ func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (
 	}
 
 	if term < int(in.Term) && (in.LastLogTerm > lastLogTerm || (in.LastLogTerm == lastLogTerm && in.LastLogIndex >= lastLogIdx)) {
-		log.Printf("[Election] Giving vote for id %v", in.CandidateId)
+		log.Printf("[Election] Giving vote for ID: %v, TERM: %v", in.CandidateId, in.Term)
+		log.Printf("[Election] [UPDATE TERM] Before: %v, After: %v", s.Node.info.currentTerm, in.Term)
 		vote = true
 		s.Node.info.votedFor = int(in.CandidateId)
 		s.Node.electionResetSignal <- true
@@ -309,6 +316,6 @@ func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (
 	} else {
 		log.Printf("[Election] Node %v requests for vote, declined", in.CandidateId)
 	}
-
+	s.mutex.Unlock()
 	return &comm.RequestVoteResponse{Term: int32(term), VoteGranted: vote}, nil
 }

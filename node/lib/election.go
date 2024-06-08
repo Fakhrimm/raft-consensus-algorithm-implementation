@@ -55,8 +55,9 @@ func (node *Node) ElectionTimerHandler() {
 
 func (node *Node) startElection() {
 	interval := time.Duration(node.info.timeoutAvgTime) * time.Second / 100 / 3
-	log.Printf("[Election] START ELECTION; TERM: %v; CLUSTER SIZE: %v", node.info.currentTerm, node.info.clusterCount)
+	log.Printf("[Election Start] Current TERM BEFORE: %v", node.info.currentTerm)
 	node.info.currentTerm++
+	log.Printf("[Election Start] START ELECTION; TERM: %v; CLUSTER SIZE: %v", node.info.currentTerm, node.info.clusterCount)
 	node.state = Candidate
 	lastLogIdx := int32(len(node.info.log) - 1)
 
@@ -143,8 +144,8 @@ func (node *Node) sendElection(address []net.TCPAddr, interval time.Duration) in
 			continue
 		}
 
-		log.Printf("[Election] node is : %v", node.address.String())
-		log.Printf("[Election] Asking for vote from node: %v", peer)
+		//log.Printf("[Election] node is : %v", node.address.String())
+		//log.Printf("[Election] Asking for vote from node: %v", peer)
 
 		waitGroup.Add(1)
 		ctx, cancel := context.WithTimeout(context.Background(), 2*interval)
@@ -167,6 +168,11 @@ func (node *Node) sendElection(address []net.TCPAddr, interval time.Duration) in
 				} else if response.VoteGranted {
 					log.Printf("[Election] Received vote from node %v", peer.String())
 					voteCh <- true
+				} else if response.Term > int32(node.info.currentTerm) {
+					log.Printf("[Election] Received higher term %v from node, turns to follower %v", peer.String())
+					log.Printf("[Election] [UPDATE TERM] Before TERM: %v, After TERM: %v", node.info.currentTerm, response.Term)
+					node.info.currentTerm = int(response.Term)
+					node.state = Follower
 				}
 			})
 		}(peer.String())
@@ -201,11 +207,15 @@ func (node *Node) startAppendEntries() {
 		for range ticker.C {
 			aliveNode := 0
 			aliveNode = node.sendAppendEntries(node.info.clusterAddresses, interval)
+			if node.state != Leader {
+				return
+			}
 
 			// TODO: Test joint consensus & improve by concurrency
 			if node.info.isJointConsensus {
 				newAliveNode := 0
 				newAliveNode = node.sendAppendEntries(node.info.newClusterAddresses, interval)
+				log.Printf("[Heartbeat]")
 
 				if (2*aliveNode <= node.info.clusterCount) && (2*newAliveNode <= node.info.newClusterCount) {
 					node.info.serverUp = false
@@ -280,13 +290,22 @@ func (node *Node) sendAppendEntries(address []net.TCPAddr, interval time.Duratio
 				response, err := node.grpcClient.AppendEntries(ctx, data)
 				if err != nil {
 					log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
+					log.Printf("[Heartbeat] Node is a: %v", node.state)
 					heartbeatCh <- false
 				} else {
-					if response.Success {
-						node.info.matchIndex[index] = int(prevLogIndex) + len(sentEntries)
-						node.info.nextIndex[index] = node.info.matchIndex[index] + 1
+					if response.Term > int32(node.info.currentTerm) {
+						log.Printf("[Heartbeat] Received higher term %v from node %v, turns to follower", response.Term, peer.String())
+						log.Printf("[Heartbeat] [UPDATE TERM] Before TERM: %v, After TERM: %v", node.info.currentTerm, response.Term)
+						node.info.currentTerm = int(response.Term)
+						node.state = Follower
+						return
 					} else {
-						node.info.nextIndex[index]--
+						if response.Success {
+							node.info.matchIndex[index] = int(prevLogIndex) + len(sentEntries)
+							node.info.nextIndex[index] = node.info.matchIndex[index] + 1
+						} else {
+							node.info.nextIndex[index]--
+						}
 					}
 					heartbeatCh <- true
 				}
