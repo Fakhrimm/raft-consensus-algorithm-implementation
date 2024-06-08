@@ -11,10 +11,11 @@ import (
 
 func (node *Node) LoadLogs(filename string) []comm.Entry {
 	log.Printf("Reading saved log")
+	filepath := fmt.Sprintf("../config/%vport%v.storage", node.address.IP, node.address.Port)
 
 	var logList []comm.Entry
 
-	file, err := os.OpenFile("./config"+node.address.String(), os.O_CREATE, 0644)
+	file, err := os.OpenFile(filepath, os.O_CREATE, 0644)
 	if err != nil {
 		log.Printf("Failed to load log file")
 		return logList
@@ -40,6 +41,7 @@ func (node *Node) LoadLogs(filename string) []comm.Entry {
 
 func (node *Node) SaveLogs() {
 	content := ""
+	filepath := fmt.Sprintf("../config/%vport%v.storage", node.address.IP, node.address.Port)
 
 	for _, entry := range node.info.log {
 		entryString := fmt.Sprintf("%v %v %v\n", entry.Command, entry.Key, entry.Value)
@@ -47,7 +49,7 @@ func (node *Node) SaveLogs() {
 	}
 
 	contentByte := []byte(content)
-	err := os.WriteFile("./config"+node.address.String(), contentByte, 0644)
+	err := os.WriteFile(filepath, contentByte, 0644)
 
 	if err != nil {
 		log.Printf("Failed to save log file: %v", err.Error())
@@ -57,7 +59,9 @@ func (node *Node) SaveLogs() {
 
 func (node *Node) SaveLog(entry comm.Entry) {
 	content := fmt.Sprintf("%v %v %v\n", entry.Command, entry.Key, entry.Value)
-	file, err := os.OpenFile("./config"+node.address.String(), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	filepath := fmt.Sprintf("../config/%vport%v.storage", node.address.IP, node.address.Port)
+
+	file, err := os.OpenFile(filepath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 
 	if err != nil {
 		log.Printf("Failed to open or create log file: %v", err.Error())

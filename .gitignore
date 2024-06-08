@@ -1,3 +1,4 @@
 .idea
 *.iml
+*.storage
 config/Hostfile

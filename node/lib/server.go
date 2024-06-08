@@ -70,6 +70,8 @@ func (s *server) Status(ctx context.Context, in *comm.BasicRequest) (*comm.Basic
 		}
 	}
 
+	s.Node.SaveLogs()
+
 	return &comm.BasicResponse{Code: 200, Message: "STAT"}, nil
 }
 
