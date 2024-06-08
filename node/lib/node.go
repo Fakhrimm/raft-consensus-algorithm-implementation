@@ -98,7 +98,6 @@ func NewNode(addr string) *Node {
 
 func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, isJointConsensus bool) {
 	log.Printf("Initializing node")
-	node.LoadLogs()
 	node.InitServer()
 
 	node.info.clusterAddresses, node.info.clusterCount, node.info.id = node.ReadServerList(hostfile)
@@ -109,6 +108,7 @@ func (node *Node) Init(hostfile string, timeoutAvgTime int, newHostfile string, 
 		node.info.isJointConsensus = isJointConsensus
 	}
 
+	node.LoadLogs()
 	node.info.timeoutAvgTime = timeoutAvgTime
 	node.info.commitIndex = -1
 

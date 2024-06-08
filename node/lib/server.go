@@ -253,7 +253,9 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 		s.Node.info.log = s.Node.info.log[:maxIdx]
 	}
 
-	for _, entry := range in.Entries {
+	newConfigIdx := -1
+	oldnewConfigIdx := -1
+	for index, entry := range in.Entries {
 		newLog := comm.Entry{
 			Term:    entry.Term,
 			Key:     entry.Key,
@@ -268,27 +270,43 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 		}
 
 		if entry.Command == int32(NewOldConfig) {
-			s.Node.info.isJointConsensus = true
-			s.Node.info.newClusterAddresses = parseAddresses(entry.Value)
-			s.Node.info.newClusterCount = len(s.Node.info.newClusterAddresses)
-			s.Node.info.newId = -1
-			for index, address := range s.Node.info.newClusterAddresses {
-				if s.Node.address.String() == address.String() {
-					s.Node.info.newId = index
-					break
-				}
-			}
-
+			oldnewConfigIdx = index
 		} else if entry.Command == int32(NewConfig) {
-			s.Node.info.isJointConsensus = false
-			s.Node.info.clusterCount = s.Node.info.newClusterCount
-			s.Node.info.clusterAddresses = s.Node.info.newClusterAddresses
+			newConfigIdx = index
+		}
+	}
 
-			if s.Node.info.newId == -1 {
-				defer s.Node.Stop()
-			} else {
-				s.Node.info.id = s.Node.info.newId
+	if oldnewConfigIdx > newConfigIdx {
+		s.Node.info.isJointConsensus = true
+		s.Node.info.newClusterAddresses = parseAddresses(in.Entries[oldnewConfigIdx].Value)
+		s.Node.info.newClusterCount = len(s.Node.info.newClusterAddresses)
+		s.Node.info.newId = -1
+		for index, address := range s.Node.info.newClusterAddresses {
+			if s.Node.address.String() == address.String() {
+				s.Node.info.newId = index
+				break
 			}
+		}
+	} else if newConfigIdx > oldnewConfigIdx && oldnewConfigIdx != -1 {
+		log.Printf("[DEBUG] oldnewindex: %v, newindex, %v, entries: %v", oldnewConfigIdx, newConfigIdx, in.Entries)
+		s.Node.info.newClusterAddresses = parseAddresses(in.Entries[oldnewConfigIdx].Value)
+		s.Node.info.newClusterCount = len(s.Node.info.newClusterAddresses)
+		s.Node.info.newId = -1
+		for index, address := range s.Node.info.newClusterAddresses {
+			if s.Node.address.String() == address.String() {
+				s.Node.info.newId = index
+				break
+			}
+		}
+
+		s.Node.info.isJointConsensus = false
+		s.Node.info.clusterCount = s.Node.info.newClusterCount
+		s.Node.info.clusterAddresses = s.Node.info.newClusterAddresses
+
+		if s.Node.info.newId == -1 {
+			defer s.Node.Stop()
+		} else {
+			s.Node.info.id = s.Node.info.newId
 		}
 	}
 

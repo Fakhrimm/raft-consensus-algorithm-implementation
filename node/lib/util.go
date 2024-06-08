@@ -16,7 +16,7 @@ func parseAddresses(clusterAddresses string) []net.TCPAddr {
 		for _, address := range addresses {
 			a, err := net.ResolveTCPAddr("tcp", address)
 			if err != nil {
-				log.Fatalf("Invalid address: %v", address)
+				log.Fatalf("Invalid address: %v, error: %v", address, err.Error())
 			}
 
 			clusterAddressesTcp = append(clusterAddressesTcp, *a)

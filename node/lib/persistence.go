@@ -23,6 +23,9 @@ func (node *Node) LoadLogs() {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	index := 0
+	newConfigIdx := -1
+	oldnewConfigIdx := -1
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -32,29 +35,46 @@ func (node *Node) LoadLogs() {
 		entry := node.ParseLog(line)
 
 		if entry.Command == int32(NewOldConfig) {
-			node.info.isJointConsensus = true
-			node.info.newClusterAddresses = parseAddresses(entry.Value)
-			node.info.newClusterCount = len(node.info.newClusterAddresses)
-			node.info.newId = -1
-			for index, address := range node.info.newClusterAddresses {
-				if node.address.String() == address.String() {
-					node.info.newId = index
-					break
-				}
-			}
+			oldnewConfigIdx = index
 		} else if entry.Command == int32(NewConfig) {
-			node.info.isJointConsensus = false
-			node.info.clusterCount = node.info.newClusterCount
-			node.info.clusterAddresses = node.info.newClusterAddresses
-
-			if node.info.newId == -1 {
-				defer node.Stop()
-			} else {
-				node.info.id = node.info.newId
-			}
+			newConfigIdx = index
 		}
 
 		logList = append(logList, entry)
+		index++
+	}
+
+	if oldnewConfigIdx > newConfigIdx {
+		node.info.isJointConsensus = true
+		node.info.newClusterAddresses = parseAddresses(logList[oldnewConfigIdx].Value)
+		node.info.newClusterCount = len(node.info.newClusterAddresses)
+		node.info.newId = -1
+		for index, address := range node.info.newClusterAddresses {
+			if node.address.String() == address.String() {
+				node.info.newId = index
+				break
+			}
+		}
+	} else if newConfigIdx > oldnewConfigIdx && oldnewConfigIdx != -1 {
+		node.info.newClusterAddresses = parseAddresses(logList[oldnewConfigIdx].Value)
+		node.info.newClusterCount = len(node.info.newClusterAddresses)
+		node.info.newId = -1
+		for index, address := range node.info.newClusterAddresses {
+			if node.address.String() == address.String() {
+				node.info.newId = index
+				break
+			}
+		}
+
+		node.info.isJointConsensus = false
+		node.info.clusterCount = node.info.newClusterCount
+		node.info.clusterAddresses = node.info.newClusterAddresses
+
+		if node.info.newId == -1 {
+			defer node.Stop()
+		} else {
+			node.info.id = node.info.newId
+		}
 	}
 
 	node.info.log = logList
