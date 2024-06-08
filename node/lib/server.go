@@ -113,7 +113,7 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 
 		transactionIndex := len(s.Node.info.log) - 1
 		for transactionIndex != s.Node.info.commitIndex {
-			log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
+			// log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
 		}
 	}
 
@@ -155,7 +155,7 @@ func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (
 
 		transactionIndex := len(s.Node.info.log) - 1
 		for transactionIndex != s.Node.info.commitIndex {
-			log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
+			// log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
 		}
 	}
 
@@ -182,7 +182,7 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 
 		transactionIndex := len(s.Node.info.log) - 1
 		for transactionIndex != s.Node.info.commitIndex {
-			log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
+			// log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
 		}
 	}
 
