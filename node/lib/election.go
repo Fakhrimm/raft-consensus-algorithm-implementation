@@ -380,7 +380,7 @@ func (node *Node) updateMajority() {
 
 	// Leader can only commit logs in its term
 	if majority >= 0 && node.info.log[majority].Term != int32(node.info.currentTerm) {
-		log.Printf("[Transaction] [NON JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[majority].Term, node.info.currentTerm)
+		//log.Printf("[Transaction] [NON JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[majority].Term, node.info.currentTerm)
 		return
 	}
 
@@ -391,7 +391,7 @@ func (node *Node) updateMajority() {
 
 		// Leader can only commit logs in its term
 		if newMajority >= 0 && node.info.log[newMajority].Term != int32(node.info.currentTerm) {
-			log.Printf("[Transaction] [JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[majority].Term, node.info.currentTerm)
+			//log.Printf("[Transaction] [JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[majority].Term, node.info.currentTerm)
 			return
 		}
 		node.CommitLogEntries(min(majority, newMajority))
