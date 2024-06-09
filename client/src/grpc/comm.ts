@@ -58,6 +58,23 @@ export interface GetValueResponse {
     value: string;
 }
 /**
+ * @generated from protobuf message comm.GetLogsResponse
+ */
+export interface GetLogsResponse {
+    /**
+     * @generated from protobuf field: int32 code = 1;
+     */
+    code: number;
+    /**
+     * @generated from protobuf field: string message = 2;
+     */
+    message: string;
+    /**
+     * @generated from protobuf field: repeated comm.Entry value = 3;
+     */
+    value: Entry[];
+}
+/**
  * @generated from protobuf message comm.SetValueRequest
  */
 export interface SetValueRequest {
@@ -484,6 +501,69 @@ class GetValueResponse$Type extends MessageType<GetValueResponse> {
  * @generated MessageType for protobuf message comm.GetValueResponse
  */
 export const GetValueResponse = new GetValueResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetLogsResponse$Type extends MessageType<GetLogsResponse> {
+    constructor() {
+        super("comm.GetLogsResponse", [
+            { no: 1, name: "code", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
+            { no: 2, name: "message", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "value", kind: "message", repeat: 1 /*RepeatType.PACKED*/, T: () => Entry }
+        ]);
+    }
+    create(value?: PartialMessage<GetLogsResponse>): GetLogsResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.code = 0;
+        message.message = "";
+        message.value = [];
+        if (value !== undefined)
+            reflectionMergePartial<GetLogsResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetLogsResponse): GetLogsResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* int32 code */ 1:
+                    message.code = reader.int32();
+                    break;
+                case /* string message */ 2:
+                    message.message = reader.string();
+                    break;
+                case /* repeated comm.Entry value */ 3:
+                    message.value.push(Entry.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GetLogsResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* int32 code = 1; */
+        if (message.code !== 0)
+            writer.tag(1, WireType.Varint).int32(message.code);
+        /* string message = 2; */
+        if (message.message !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.message);
+        /* repeated comm.Entry value = 3; */
+        for (let i = 0; i < message.value.length; i++)
+            Entry.internalBinaryWrite(message.value[i], writer.tag(3, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message comm.GetLogsResponse
+ */
+export const GetLogsResponse = new GetLogsResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class SetValueRequest$Type extends MessageType<SetValueRequest> {
     constructor() {
@@ -1396,6 +1476,7 @@ export const CommService = new ServiceType("comm.CommService", [
     { name: "Ping", options: {}, I: BasicRequest, O: BasicResponse },
     { name: "Status", options: {}, I: BasicRequest, O: BasicResponse },
     { name: "Stop", options: {}, I: BasicRequest, O: BasicResponse },
+    { name: "GetLogs", options: {}, I: BasicRequest, O: GetLogsResponse },
     { name: "GetValue", options: {}, I: GetValueRequest, O: GetValueResponse },
     { name: "SetValue", options: {}, I: SetValueRequest, O: SetValueResponse },
     { name: "StrlnValue", options: {}, I: StrlnValueRequest, O: StrlnValueResponse },

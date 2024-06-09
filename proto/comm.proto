@@ -8,6 +8,7 @@ service CommService {
   rpc Ping (BasicRequest) returns (BasicResponse);
   rpc Status (BasicRequest) returns (BasicResponse);
   rpc Stop (BasicRequest) returns (BasicResponse);
+  rpc GetLogs (BasicRequest) returns (GetLogsResponse);
   rpc GetValue (GetValueRequest) returns (GetValueResponse);
   rpc SetValue (SetValueRequest) returns (SetValueResponse);
   rpc StrlnValue (StrlnValueRequest) returns (StrlnValueResponse);
@@ -37,6 +38,12 @@ message GetValueResponse {
   int32 code = 1;
   string message = 2;
   string value = 3;
+}
+
+message GetLogsResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated Entry value = 3;
 }
 
 message SetValueRequest {

@@ -48,6 +48,22 @@ func (c *Controller) Get(address string, key string) {
 	})
 }
 
+func (c *Controller) GetLogs(address string) {
+	c.Call(address, func() {
+		response, err := c.client.GetLogs(context.Background(), &comm.BasicRequest{})
+		if err != nil {
+			log.Printf("getlogs error: %v", err)
+		}
+		log.Printf("Response: {%v}", response)
+
+		log.Printf("/\n\nlog info:")
+		for index, entry := range response.Value {
+			log.Printf("[%v]: command: %v, key:%v, value:%v, term:%v", index, entry.Command, entry.Key, entry.Value, entry.Term)
+		}
+
+	})
+}
+
 func (c *Controller) Strlen(address string, key string) {
 	c.Call(address, func() {
 		response, err := c.client.StrlnValue(context.Background(), &comm.StrlnValueRequest{Key: key})

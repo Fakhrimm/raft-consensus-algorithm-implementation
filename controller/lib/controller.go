@@ -74,6 +74,12 @@ func (c *Controller) Run() {
 				continue
 			}
 			c.Get(parts[1], parts[2])
+		case "getlogs":
+			if length < 2 {
+				log.Println("Usage: getlogs <address>")
+				continue
+			}
+			c.GetLogs(parts[1])
 		case "set":
 			if length < 4 {
 				log.Println("Usage: get <address> <key> <value>")

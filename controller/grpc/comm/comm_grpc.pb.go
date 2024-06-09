@@ -25,6 +25,7 @@ type CommServiceClient interface {
 	Ping(ctx context.Context, in *BasicRequest, opts ...grpc.CallOption) (*BasicResponse, error)
 	Status(ctx context.Context, in *BasicRequest, opts ...grpc.CallOption) (*BasicResponse, error)
 	Stop(ctx context.Context, in *BasicRequest, opts ...grpc.CallOption) (*BasicResponse, error)
+	GetLogs(ctx context.Context, in *BasicRequest, opts ...grpc.CallOption) (*GetLogsResponse, error)
 	GetValue(ctx context.Context, in *GetValueRequest, opts ...grpc.CallOption) (*GetValueResponse, error)
 	SetValue(ctx context.Context, in *SetValueRequest, opts ...grpc.CallOption) (*SetValueResponse, error)
 	StrlnValue(ctx context.Context, in *StrlnValueRequest, opts ...grpc.CallOption) (*StrlnValueResponse, error)
@@ -65,6 +66,15 @@ func (c *commServiceClient) Status(ctx context.Context, in *BasicRequest, opts .
 func (c *commServiceClient) Stop(ctx context.Context, in *BasicRequest, opts ...grpc.CallOption) (*BasicResponse, error) {
 	out := new(BasicResponse)
 	err := c.cc.Invoke(ctx, "/comm.CommService/Stop", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *commServiceClient) GetLogs(ctx context.Context, in *BasicRequest, opts ...grpc.CallOption) (*GetLogsResponse, error) {
+	out := new(GetLogsResponse)
+	err := c.cc.Invoke(ctx, "/comm.CommService/GetLogs", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +160,7 @@ type CommServiceServer interface {
 	Ping(context.Context, *BasicRequest) (*BasicResponse, error)
 	Status(context.Context, *BasicRequest) (*BasicResponse, error)
 	Stop(context.Context, *BasicRequest) (*BasicResponse, error)
+	GetLogs(context.Context, *BasicRequest) (*GetLogsResponse, error)
 	GetValue(context.Context, *GetValueRequest) (*GetValueResponse, error)
 	SetValue(context.Context, *SetValueRequest) (*SetValueResponse, error)
 	StrlnValue(context.Context, *StrlnValueRequest) (*StrlnValueResponse, error)
@@ -174,6 +185,9 @@ func (UnimplementedCommServiceServer) Status(context.Context, *BasicRequest) (*B
 }
 func (UnimplementedCommServiceServer) Stop(context.Context, *BasicRequest) (*BasicResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
+}
+func (UnimplementedCommServiceServer) GetLogs(context.Context, *BasicRequest) (*GetLogsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLogs not implemented")
 }
 func (UnimplementedCommServiceServer) GetValue(context.Context, *GetValueRequest) (*GetValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetValue not implemented")
@@ -262,6 +276,24 @@ func _CommService_Stop_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CommServiceServer).Stop(ctx, req.(*BasicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CommService_GetLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BasicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommServiceServer).GetLogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/comm.CommService/GetLogs",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommServiceServer).GetLogs(ctx, req.(*BasicRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -428,6 +460,10 @@ var CommService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Stop",
 			Handler:    _CommService_Stop_Handler,
+		},
+		{
+			MethodName: "GetLogs",
+			Handler:    _CommService_GetLogs_Handler,
 		},
 		{
 			MethodName: "GetValue",

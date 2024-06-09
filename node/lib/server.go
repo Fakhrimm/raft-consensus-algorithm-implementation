@@ -46,6 +46,45 @@ func (s *server) Stop(ctx context.Context, in *comm.BasicRequest) (*comm.BasicRe
 	return &comm.BasicResponse{Code: 200, Message: "STOPPING"}, nil
 }
 
+func (s *server) GetLogs(ctx context.Context, in *comm.BasicRequest) (*comm.GetLogsResponse, error) {
+	log.Printf("[Transaction] Recevied log request")
+	var code int32
+	var message string
+	var value []*comm.Entry
+
+	// TODO: Give feedback when value is not set
+	code, message = s.ValidateRequest()
+	switch code {
+	case 200:
+		length := len(s.Node.info.log)
+		sentEntries := make([]*comm.Entry, length)
+		for i := 0; i < length; i++ {
+			sentEntries[i] = &comm.Entry{
+				Term:    s.Node.info.log[i].Term,
+				Key:     s.Node.info.log[i].Key,
+				Value:   s.Node.info.log[i].Value,
+				Command: s.Node.info.log[i].Command,
+			}
+		}
+		message = "Logs fetched successfully"
+		value = sentEntries
+
+	case 301:
+		s.Node.Call(message, func() {
+			response, err := s.Node.grpcClient.GetLogs(ctx, in)
+			if err != nil {
+				log.Printf("[Transaction] Error reaching leader for get value: %v", err)
+			} else {
+				// code = response.Code
+				message = response.Message
+				value = response.Value
+			}
+		})
+	}
+
+	return &comm.GetLogsResponse{Code: code, Message: message, Value: value}, nil
+}
+
 func (s *server) GetValue(ctx context.Context, in *comm.GetValueRequest) (*comm.GetValueResponse, error) {
 	log.Printf("[Transaction] Recevied get request of %v", in.Key)
 	var code int32
