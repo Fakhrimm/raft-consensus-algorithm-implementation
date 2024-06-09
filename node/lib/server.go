@@ -122,14 +122,18 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 	code, message = s.ValidateRequest()
 	switch code {
 	case 200:
-		message = "Value set request received"
+		if in.Value != "" {
+			message = "Value set request received"
 
-		s.Node.appendToLog(comm.Entry{
-			Term:    int32(s.Node.info.currentTerm),
-			Key:     in.Key,
-			Value:   in.Value,
-			Command: int32(Set),
-		})
+			s.Node.appendToLog(comm.Entry{
+				Term:    int32(s.Node.info.currentTerm),
+				Key:     in.Key,
+				Value:   in.Value,
+				Command: int32(Set),
+			})
+		} else {
+			message = "Value is empty"
+		}
 
 		// transactionIndex := len(s.Node.info.log) - 1
 		// for transactionIndex != s.Node.info.commitIndex {
@@ -228,14 +232,19 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 	code, message = s.ValidateRequest()
 	switch code {
 	case 200:
-		message = "Value append request received"
+		if in.Value != "" {
+			message = "Value append request received"
 
-		s.Node.appendToLog(comm.Entry{
-			Term:    int32(s.Node.info.currentTerm),
-			Key:     in.Key,
-			Value:   in.Value,
-			Command: int32(Append),
-		})
+			s.Node.appendToLog(comm.Entry{
+				Term:    int32(s.Node.info.currentTerm),
+				Key:     in.Key,
+				Value:   in.Value,
+				Command: int32(Set),
+			})
+		} else {
+			code = 400
+			message = "Value is empty"
+		}
 
 		// transactionIndex := len(s.Node.info.log) - 1
 		// for transactionIndex != s.Node.info.commitIndex {
