@@ -20,6 +20,9 @@ const appendKeyInput = document.getElementById("append-key-input") as HTMLInputE
 const appendValueInput = document.getElementById("append-value-input") as HTMLInputElement;
 const appendButton = document.getElementById("append-button") as HTMLButtonElement;
 
+const changeMembershipInput = document.getElementById("membership-input") as HTMLInputElement;
+const changeMembershipButton = document.getElementById("membership-change-button") as HTMLButtonElement;
+
 const logSection = document.getElementById("log-section") as HTMLDivElement;
 
 export {
@@ -37,5 +40,7 @@ export {
   appendKeyInput,
   appendValueInput,
   appendButton,
+  changeMembershipInput,
+  changeMembershipButton,
   logSection,
 }

@@ -3,7 +3,7 @@ import { CommServiceClient } from "./grpc/comm.client";
 
 import {
   AppendValueRequest,
-  BasicRequest, DeleteValueRequest, GetValueRequest, SetValueRequest,
+  BasicRequest, ChangeMembershipRequest, DeleteValueRequest, GetValueRequest, SetValueRequest,
   StrlnValueRequest,
 } from "./grpc/comm";
 import {
@@ -18,7 +18,9 @@ import {
   appendKeyInput,
   appendValueInput,
   logSection,
-  delInput
+  delInput,
+  changeMembershipButton,
+  changeMembershipInput
 } from "./binding.ts";
 import { GrpcWebFetchTransport } from "@protobuf-ts/grpcweb-transport";
 
@@ -163,5 +165,20 @@ appendButton.onclick = async () => {
   } catch (e) {
     console.log(e)
     updateLog("An error occured when trying to APPEND value, check console")
+  }
+}
+
+changeMembershipButton.onclick = async () => {
+  const request = ChangeMembershipRequest.create({
+    newClusterAddresses: changeMembershipInput.value,
+  })
+
+  try {
+    const response = await client.changeMembership(request)
+    
+    updateLog(response.response.message)
+  } catch (e) {
+    console.log(e)
+    updateLog("An error occured when trying to CHANGE MEMBERSHIP, check console")
   }
 }
