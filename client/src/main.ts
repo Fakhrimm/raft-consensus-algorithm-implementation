@@ -176,7 +176,7 @@ changeMembershipButton.onclick = async () => {
   try {
     const response = await client.changeMembership(request)
     
-    updateLog(response.response.message)
+    updateLog(`Status ${response.response.message}, New addresses : ${changeMembershipInput.value}`)
   } catch (e) {
     console.log(e)
     updateLog("An error occured when trying to CHANGE MEMBERSHIP, check console")
