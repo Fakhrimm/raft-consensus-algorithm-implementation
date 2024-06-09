@@ -239,6 +239,7 @@ func (node *Node) CommitLogEntries(newCommitIndex int) {
 	// log.Printf("\n\n")
 	for i := node.info.commitIndex + 1; i <= newCommitIndex; i++ {
 		entry := node.info.log[i]
+		log.Printf("[CommitLogEntries] Committing entry index %v with command %v", i, entry.Command)
 
 		switch entry.Command {
 		case int32(Set):
@@ -248,15 +249,16 @@ func (node *Node) CommitLogEntries(newCommitIndex int) {
 		case int32(Delete):
 			node.app.Del(entry.Key)
 		case int32(NewConfig):
-			if node.state == Leader {
-				contained := false
-				for _, addr := range node.info.newClusterAddresses {
-					if addr.String() == node.address.String() {
-						contained = true
-						break
-					}
+			contained := false
+			for _, addr := range node.info.newClusterAddresses {
+				if addr.String() == node.address.String() {
+					contained = true
+					break
 				}
-				if contained {
+			}
+			if contained {
+				if node.state == Leader {
+					log.Printf("[CommitLogEntries] Node Leader %v change to NewConfig", node.address.String())
 					node.info.clusterAddresses = node.info.newClusterAddresses
 					node.info.clusterCount = node.info.newClusterCount
 					node.info.id = node.info.newId
@@ -275,10 +277,21 @@ func (node *Node) CommitLogEntries(newCommitIndex int) {
 					}
 					node.info.matchIndex[node.info.id] = int(lastLogIdx)
 					node.info.nextIndex[node.info.id] = int(lastLogIdx) + 1
-
 				} else {
-					log.Printf("[CommitLogEntries] Node %v is not in new cluster but its a leader, precedes to kill itself", node.address.String())
-					node.Stop()
+					log.Printf("[CommitLogEntries] Node Follower %v change to NewConfig", node.address.String())
+					node.info.clusterAddresses = node.info.newClusterAddresses
+					node.info.clusterCount = node.info.newClusterCount
+					node.info.id = node.info.newId
+					node.info.isJointConsensus = false
+				}
+			} else {
+				if node.state == Leader {
+					if entry.Term == int32(node.info.currentTerm) {
+						log.Printf("[CommitLogEntries] Leader %v is not in new cluster, procedes to kill itself", node.address.String())
+						node.Stop()
+					} else {
+						log.Printf("[CommitLogEntries] Leader %v is not in new cluster but its old term, ignore", node.address.String())
+					}
 				}
 			}
 		case int32(NewOldConfig):
@@ -304,8 +317,10 @@ func (node *Node) appendToLog(newEntry comm.Entry) {
 	// node.nodeMutex.Lock()
 	node.info.log = append(node.info.log, newEntry)
 
-	node.info.matchIndex[node.info.id] = len(node.info.log) - 1
-	node.info.nextIndex[node.info.id] = len(node.info.log)
+	if node.info.id != -1 {
+		node.info.matchIndex[node.info.id] = len(node.info.log) - 1
+		node.info.nextIndex[node.info.id] = len(node.info.log)
+	}
 
 	// for index, nextIndex := range node.info.nextIndex {
 	// 	if nextIndex == node.info.matchIndex[index] {
