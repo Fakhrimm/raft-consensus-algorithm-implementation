@@ -262,6 +262,7 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 			Value:   entry.Value,
 			Command: entry.Command,
 		}
+		log.Printf("[AppendEntries] Appending log with index: %v, term: %v, key: %v, value: %v, command: %v", len(s.Node.info.log)-1, entry.Term, entry.Key, entry.Value, entry.Command)
 		s.Node.info.log = append(s.Node.info.log, newLog)
 
 		if !overwrite {
@@ -276,6 +277,7 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 		}
 	}
 
+	log.Printf("[AppendEntries] oldnewConfigIdx: %v, newConfigIdx: %v", oldnewConfigIdx, newConfigIdx)
 	if oldnewConfigIdx > newConfigIdx {
 		s.Node.info.isJointConsensus = true
 		s.Node.info.newClusterAddresses = parseAddresses(in.Entries[oldnewConfigIdx].Value)
@@ -287,26 +289,44 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 				break
 			}
 		}
-	} else if newConfigIdx > oldnewConfigIdx && oldnewConfigIdx != -1 {
-		log.Printf("[DEBUG] oldnewindex: %v, newindex, %v, entries: %v", oldnewConfigIdx, newConfigIdx, in.Entries)
-		s.Node.info.newClusterAddresses = parseAddresses(in.Entries[oldnewConfigIdx].Value)
-		s.Node.info.newClusterCount = len(s.Node.info.newClusterAddresses)
-		s.Node.info.newId = -1
-		for index, address := range s.Node.info.newClusterAddresses {
-			if s.Node.address.String() == address.String() {
-				s.Node.info.newId = index
-				break
+	} else if newConfigIdx > oldnewConfigIdx {
+		if oldnewConfigIdx != -1 {
+			log.Printf("[DEBUG] oldnewindex: %v, newindex, %v, entries: %v", oldnewConfigIdx, newConfigIdx, in.Entries)
+			s.Node.info.newClusterAddresses = parseAddresses(in.Entries[oldnewConfigIdx].Value)
+			s.Node.info.newClusterCount = len(s.Node.info.newClusterAddresses)
+			s.Node.info.newId = -1
+			for index, address := range s.Node.info.newClusterAddresses {
+				if s.Node.address.String() == address.String() {
+					s.Node.info.newId = index
+					break
+				}
 			}
-		}
 
-		s.Node.info.isJointConsensus = false
-		s.Node.info.clusterCount = s.Node.info.newClusterCount
-		s.Node.info.clusterAddresses = s.Node.info.newClusterAddresses
+			s.Node.info.isJointConsensus = false
+			s.Node.info.clusterCount = s.Node.info.newClusterCount
+			s.Node.info.clusterAddresses = s.Node.info.newClusterAddresses
 
-		if s.Node.info.newId == -1 {
-			defer s.Node.Stop()
+			if s.Node.info.newId == -1 {
+				defer s.Node.Stop()
+			} else {
+				s.Node.info.id = s.Node.info.newId
+			}
 		} else {
-			s.Node.info.id = s.Node.info.newId
+			log.Printf("[AppendEntries] change to newConfig state, but no oldnewConfigIdx")
+			s.Node.info.isJointConsensus = false
+			s.Node.info.clusterCount = s.Node.info.newClusterCount
+			s.Node.info.clusterAddresses = s.Node.info.newClusterAddresses
+			s.Node.info.id = -1
+			for index, address := range s.Node.info.clusterAddresses {
+				if s.Node.address.String() == address.String() {
+					s.Node.info.id = index
+					break
+				}
+			}
+
+			if s.Node.info.id == -1 {
+				defer s.Node.Stop()
+			}
 		}
 	}
 
