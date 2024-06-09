@@ -79,7 +79,9 @@ func (node *Node) LoadLogs() {
 	node.info.log = logList
 
 	// Set current term to the last term in the log
-	node.info.currentTerm = int(node.info.log[len(node.info.log)-1].Term)
+	if len(node.info.log) > 0 {
+		node.info.currentTerm = int(node.info.log[len(node.info.log)-1].Term)
+	}
 }
 
 func (node *Node) SaveLogs() {
