@@ -235,7 +235,9 @@ func (node *Node) startAppendEntries() {
 			// TODO: Test joint consensus & improve by concurrency
 			if node.info.isJointConsensus {
 				newAliveNode := 0
+				//log.Printf("[Debug] mathIndexNew: %v", node.info.matchIndexNew)
 				newAliveNode = node.sendAppendEntries(node.info.newClusterAddresses, interval, node.info.matchIndexNew, node.info.nextIndexNew)
+				//log.Printf("[Debug] matchIndexNew After Append: %v", node.info.matchIndexNew)
 				if node.state != Leader {
 					return
 				}
@@ -267,8 +269,15 @@ func (node *Node) sendAppendEntries(address []net.TCPAddr, interval time.Duratio
 	heartbeatCh := make(chan bool, len(address))
 
 	// log.Printf("[Heartbeat] Sending heartbeats")
+	//log.Printf("[Heartbeat] Sending heartbeats to ")
 	for index, peer := range address {
 		if peer.String() == node.address.String() {
+			//log.Printf("[Debug] matchIndex before: %v", matchIndex)
+			//log.Printf("[Heartbeat] Updating heartbeat to self")
+			matchIndex[index] = len(node.info.log) - 1
+			nextIndex[index] = len(node.info.log)
+			//log.Printf("[DEBUG] Heartbeat success, matchIndex is now %v", matchIndex[index])
+			//log.Printf("nextIndex: %v", node.info.nextIndex)
 			continue
 		}
 		// log.Printf("[Heartbeat] Sending heartbeat to node %v: %v", index, peer)
@@ -369,7 +378,8 @@ func (node *Node) sendAppendEntries(address []net.TCPAddr, interval time.Duratio
 func (node *Node) updateMajority() {
 	majority := node.getMajority(node.info.matchIndex, node.info.clusterCount)
 
-	if node.info.log[majority].Term != int32(node.info.currentTerm) {
+	// Leader can only commit logs in its term
+	if majority >= 0 && node.info.log[majority].Term != int32(node.info.currentTerm) {
 		log.Printf("[Transaction] [NON JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[majority].Term, node.info.currentTerm)
 		return
 	}
@@ -377,7 +387,10 @@ func (node *Node) updateMajority() {
 	// TODO: Test joint consensus & improve concurrency
 	if node.info.isJointConsensus {
 		newMajority := node.getMajority(node.info.matchIndexNew, node.info.newClusterCount)
-		if node.info.log[newMajority].Term != int32(node.info.currentTerm) {
+		//log.Printf("[Transaction] [JOINT] getting majority, old majority: %v, new majority: %v", majority, newMajority)
+
+		// Leader can only commit logs in its term
+		if newMajority >= 0 && node.info.log[newMajority].Term != int32(node.info.currentTerm) {
 			log.Printf("[Transaction] [JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[majority].Term, node.info.currentTerm)
 			return
 		}
@@ -391,6 +404,7 @@ func (node *Node) updateMajority() {
 }
 
 func (node *Node) getMajority(matchArray []int, clusterCount int) int {
+	//log.Printf("[Transaction] getting majority, matchArray: %v, clusterCount: %v", matchArray, clusterCount)
 	matchIndex := make(map[int]int)
 	for _, index := range matchArray {
 		if matchIndex[index] == 0 {
