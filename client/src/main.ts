@@ -20,7 +20,9 @@ import {
   logSection,
   delInput,
   changeMembershipButton,
-  changeMembershipInput
+  changeMembershipInput,
+  nodeLogButton,
+  nodeLogSection
 } from "./binding.ts";
 import { GrpcWebFetchTransport } from "@protobuf-ts/grpcweb-transport";
 
@@ -180,5 +182,28 @@ changeMembershipButton.onclick = async () => {
   } catch (e) {
     console.log(e)
     updateLog("An error occured when trying to CHANGE MEMBERSHIP, check console")
+  }
+}
+
+nodeLogButton.onclick = async () => {
+  const request = BasicRequest.create({})
+
+  try {
+    const response = await client.getLogs(request)
+    const logs = response.response.value
+
+    nodeLogSection.innerHTML = ''
+
+    var idx = 1
+    logs.forEach(logEntry => {
+      const logDiv = document.createElement('div');
+      logDiv.textContent = `[${idx}]: command: ${logEntry.command}, key:${logEntry.key}, value:${logEntry.value}, term:${logEntry.term}`;
+      nodeLogSection.appendChild(logDiv);
+      idx++
+    });
+    updateLog(response.response.message)
+  } catch (e) {
+    console.log(e)
+    updateLog("An error occured when trying to GET NODE LOGS, check console")
   }
 }

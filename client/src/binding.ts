@@ -23,6 +23,9 @@ const appendButton = document.getElementById("append-button") as HTMLButtonEleme
 const changeMembershipInput = document.getElementById("membership-input") as HTMLInputElement;
 const changeMembershipButton = document.getElementById("membership-change-button") as HTMLButtonElement;
 
+const nodeLogButton = document.getElementById("node-logs-button") as HTMLButtonElement;
+const nodeLogSection = document.getElementById("node-log-section") as HTMLDivElement;
+
 const logSection = document.getElementById("log-section") as HTMLDivElement;
 
 export {
@@ -42,5 +45,7 @@ export {
   appendButton,
   changeMembershipInput,
   changeMembershipButton,
+  nodeLogButton,
+  nodeLogSection,
   logSection,
 }
