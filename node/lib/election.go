@@ -85,8 +85,10 @@ func (node *Node) startElection() {
 				node.info.nextIndex[i] = int(lastLogIdx) + 1
 				node.info.matchIndex[i] = -1
 			}
-			node.info.matchIndex[node.info.id] = int(lastLogIdx)
-			node.info.nextIndex[node.info.id] = int(lastLogIdx) + 1
+			if node.info.id != -1 {
+				node.info.matchIndex[node.info.id] = int(lastLogIdx)
+				node.info.nextIndex[node.info.id] = int(lastLogIdx) + 1
+			}
 
 			// New
 			node.info.matchIndexNew = make([]int, node.info.newClusterCount)
@@ -121,6 +123,8 @@ func (node *Node) startElection() {
 			// TODO: check and only commit the ones in leader term
 			// discard uncommited log from other leader
 
+			log.Printf("[Election] [LEADER] clusterAddress: %v", node.info.clusterAddresses)
+
 			node.info.matchIndex = make([]int, node.info.clusterCount)
 			node.info.nextIndex = make([]int, node.info.clusterCount)
 
@@ -128,8 +132,14 @@ func (node *Node) startElection() {
 				node.info.nextIndex[i] = int(lastLogIdx) + 1
 				node.info.matchIndex[i] = -1
 			}
-			node.info.matchIndex[node.info.id] = int(lastLogIdx)
-			node.info.nextIndex[node.info.id] = int(lastLogIdx) + 1
+			if node.info.id != -1 {
+				node.info.matchIndex[node.info.id] = int(lastLogIdx)
+				node.info.nextIndex[node.info.id] = int(lastLogIdx) + 1
+			} else {
+				log.Printf("[Election] [LEADER] trying to be leader but not in clusterAddresses and not in isJointConsensus\n[Election] [LEADER] abort being a leader")
+				node.state = Follower
+				return
+			}
 			// log.Printf("[Election] matchIndex: %v", node.info.matchIndex)
 			// log.Printf("[Election] nextIndex: %v", node.info.nextIndex)
 
@@ -380,20 +390,21 @@ func (node *Node) updateMajority() {
 
 	// Leader can only commit logs in its term
 	if majority >= 0 && node.info.log[majority].Term != int32(node.info.currentTerm) {
-		//log.Printf("[Transaction] [NON JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[majority].Term, node.info.currentTerm)
+		log.Printf("[Transaction] [NON JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[majority].Term, node.info.currentTerm)
 		return
 	}
 
 	// TODO: Test joint consensus & improve concurrency
 	if node.info.isJointConsensus {
 		newMajority := node.getMajority(node.info.matchIndexNew, node.info.newClusterCount)
-		//log.Printf("[Transaction] [JOINT] getting majority, old majority: %v, new majority: %v", majority, newMajority)
+		log.Printf("[Transaction] [JOINT] getting majority, old majority: %v, new majority: %v", majority, newMajority)
 
 		// Leader can only commit logs in its term
 		if newMajority >= 0 && node.info.log[newMajority].Term != int32(node.info.currentTerm) {
-			//log.Printf("[Transaction] [JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[majority].Term, node.info.currentTerm)
+			log.Printf("[Transaction] [JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[newMajority].Term, node.info.currentTerm)
 			return
 		}
+		log.Printf("[Transaction] [JOINT] updating majority, old majority: %v, new majority: %v", majority, newMajority)
 		node.CommitLogEntries(min(majority, newMajority))
 		// log.Printf("[DEBUG] majority: %v, newMajoirity: %v", majority, newMajority)
 	} else {
