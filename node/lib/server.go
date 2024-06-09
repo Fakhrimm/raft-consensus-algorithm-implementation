@@ -16,8 +16,8 @@ type server struct {
 // Application purposes
 func (s *server) ValidateRequest() (code int32, message string) {
 	if s.Node.state != Leader {
-		log.Printf("[Transaction] Transaction refused, node is not leader")
-		return 501, s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
+		log.Printf("[Transaction] Transaction redirected to leader since node is not leader")
+		return 301, s.Node.info.clusterAddresses[s.Node.info.leaderId].String()
 	} else if !s.Node.info.serverUp {
 		log.Printf("[Transaction] Transaction refused, not enough active nodes")
 		return 503, "Service Unavailable"
@@ -47,15 +47,28 @@ func (s *server) Stop(ctx context.Context, in *comm.BasicRequest) (*comm.BasicRe
 }
 
 func (s *server) GetValue(ctx context.Context, in *comm.GetValueRequest) (*comm.GetValueResponse, error) {
+	log.Printf("[Transaction] Recevied get request of %v", in.Key)
 	var code int32
 	var message string
 	var value string
 
 	// TODO: Give feedback when value is not set
 	code, message = s.ValidateRequest()
-	if code == 200 {
+	switch code {
+	case 200:
 		message = "Value fetched successfully"
 		value = s.Node.app.Get(in.Key)
+	case 301:
+		s.Node.Call(message, func() {
+			response, err := s.Node.grpcClient.GetValue(ctx, in)
+			if err != nil {
+				log.Printf("[Transaction] Error reaching leader for get value: %v", err)
+			} else {
+				// code = response.Code
+				message = response.Message
+				value = response.Value
+			}
+		})
 	}
 
 	return &comm.GetValueResponse{Code: code, Message: message, Value: value}, nil
@@ -68,8 +81,9 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 	var value string
 
 	code, message = s.ValidateRequest()
-	if code == 200 {
-		message = "Value set request completed"
+	switch code {
+	case 200:
+		message = "Value set request received"
 
 		s.Node.appendToLog(comm.Entry{
 			Term:    int32(s.Node.info.currentTerm),
@@ -78,13 +92,24 @@ func (s *server) SetValue(ctx context.Context, in *comm.SetValueRequest) (*comm.
 			Command: int32(Set),
 		})
 
-		transactionIndex := len(s.Node.info.log) - 1
-		for transactionIndex != s.Node.info.commitIndex {
-			// log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
-		}
+		// transactionIndex := len(s.Node.info.log) - 1
+		// for transactionIndex != s.Node.info.commitIndex {
+		// log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
+		// }
+	case 301:
+		s.Node.Call(message, func() {
+			response, err := s.Node.grpcClient.SetValue(ctx, in)
+			if err != nil {
+				log.Printf("[Transaction] Error reaching leader for set value: %v", err)
+			} else {
+				// code = response.Code
+				message = response.Message
+				value = response.Value
+			}
+		})
 	}
 
-	log.Printf("[Transaction] Set request is completed")
+	// log.Printf("[Transaction] Set request received")
 	return &comm.SetValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
@@ -95,11 +120,24 @@ func (s *server) StrlnValue(ctx context.Context, in *comm.StrlnValueRequest) (*c
 	var value int32
 
 	code, message = s.ValidateRequest()
-	if code == 200 {
+	switch code {
+	case 200:
 		message = "Strlen fetched successfully"
 		value = int32(s.Node.app.Strln(in.Key))
+	case 301:
+		s.Node.Call(message, func() {
+			response, err := s.Node.grpcClient.StrlnValue(ctx, in)
+			if err != nil {
+				log.Printf("[Transaction] Error reaching leader for strlen value: %v", err)
+			} else {
+				// code = response.Code
+				message = response.Message
+				value = response.Value
+			}
+		})
 	}
 
+	// log.Printf("[Transaction] Strlen request received")
 	return &comm.StrlnValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
@@ -110,7 +148,8 @@ func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (
 	var value string
 
 	code, message = s.ValidateRequest()
-	if code == 200 {
+	switch code {
+	case 200:
 		message = "Value delete request completed"
 
 		s.Node.appendToLog(comm.Entry{
@@ -120,13 +159,24 @@ func (s *server) DeleteValue(ctx context.Context, in *comm.DeleteValueRequest) (
 			Command: int32(Delete),
 		})
 
-		transactionIndex := len(s.Node.info.log) - 1
-		for transactionIndex != s.Node.info.commitIndex {
-			// log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
-		}
+		// transactionIndex := len(s.Node.info.log) - 1
+		// for transactionIndex != s.Node.info.commitIndex {
+		// log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
+		// }
+	case 301:
+		s.Node.Call(message, func() {
+			response, err := s.Node.grpcClient.DeleteValue(ctx, in)
+			if err != nil {
+				log.Printf("[Transaction] Error reaching leader for delete value: %v", err)
+			} else {
+				// code = response.Code
+				message = response.Message
+				value = response.Value
+			}
+		})
 	}
 
-	log.Printf("[Transaction] Delete request is completed")
+	// log.Printf("[Transaction] Delete request received")
 	return &comm.DeleteValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
@@ -137,8 +187,9 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 	var value string
 
 	code, message = s.ValidateRequest()
-	if code == 200 {
-		message = "Value append request completed"
+	switch code {
+	case 200:
+		message = "Value append request received"
 
 		s.Node.appendToLog(comm.Entry{
 			Term:    int32(s.Node.info.currentTerm),
@@ -147,13 +198,24 @@ func (s *server) AppendValue(ctx context.Context, in *comm.AppendValueRequest) (
 			Command: int32(Append),
 		})
 
-		transactionIndex := len(s.Node.info.log) - 1
-		for transactionIndex != s.Node.info.commitIndex {
-			// log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
-		}
+		// transactionIndex := len(s.Node.info.log) - 1
+		// for transactionIndex != s.Node.info.commitIndex {
+		// log.Printf("[Transaction] Waiting to sync transactionIndex: %v, commitIndex: %v", transactionIndex, s.Node.info.commitIndex)
+		// }
+	case 301:
+		s.Node.Call(message, func() {
+			response, err := s.Node.grpcClient.AppendValue(ctx, in)
+			if err != nil {
+				log.Printf("[Transaction] Error reaching leader for append value: %v", err)
+			} else {
+				// code = response.Code
+				message = response.Message
+				value = response.Value
+			}
+		})
 	}
 
-	log.Printf("[Transaction] Append request is completed")
+	// log.Printf("[Transaction] Append request received")
 	return &comm.AppendValueResponse{Code: code, Message: message, Value: value}, nil
 }
 
@@ -164,13 +226,15 @@ func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembership
 	// "10.1.78.242:60000,10.1.78.242:60001,10.1.78.242:60002"
 	// (separated by comma)
 	var code int32
-	var message string
+	message := "Cluster Configuration Change Received"
+	value := in.NewClusterAddresses
 
 	var newClusterAddresses []net.TCPAddr
 
 	// Validate the request first
 	code, message = s.ValidateRequest()
-	if code == 200 {
+	switch code {
+	case 200:
 		// Parse the (old) addresses and new addresses
 		newClusterAddresses = parseAddresses(in.NewClusterAddresses)
 		log.Printf("[Config] New addresses: %v", newClusterAddresses)
@@ -206,9 +270,20 @@ func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembership
 			Value:   in.NewClusterAddresses,
 			Command: int32(NewOldConfig),
 		})
+	case 301:
+		s.Node.Call(message, func() {
+			response, err := s.Node.grpcClient.ChangeMembership(ctx, in)
+			if err != nil {
+				log.Printf("[Transaction] Error reaching leader for change membership: %v", err)
+			} else {
+				// code = response.Code
+				message = response.Message
+				value = response.Value
+			}
+		})
 	}
 
-	return &comm.ChangeMembershipResponse{Code: code, Message: message, Value: in.NewClusterAddresses}, nil
+	return &comm.ChangeMembershipResponse{Code: code, Message: message, Value: value}, nil
 }
 
 // Raft purposes

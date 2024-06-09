@@ -1,5 +1,5 @@
 .idea
 *.iml
 *.storage
-config/Hostfile
+config/Hostfile*
 *.temp
