@@ -216,6 +216,8 @@ func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesReques
 	s.Node.nodeMutex.Lock()
 	defer s.Node.nodeMutex.Unlock("[AppendEntries]")
 
+	log.Printf("[AppendEntries] Received append entries request from %v", in.LeaderId)
+
 	//Reply false if term from leader < currentTerm (§5.1)
 	if in.Term < int32(s.Node.info.currentTerm) {
 		return &comm.AppendEntriesResponse{Term: int32(s.Node.info.currentTerm), Success: false}, nil
@@ -366,7 +368,7 @@ func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (
 		s.Node.electionResetSignal <- true
 		s.Node.info.currentTerm = int(in.Term)
 	} else {
-		log.Printf("[Election] Node %v requests for vote, declined", in.CandidateId)
+		log.Printf("[Election] Declined vote for ID: %v, TERM: %v", in.CandidateId, in.Term)
 	}
 	s.serverMutex.Unlock("[RequestVote]")
 	return &comm.RequestVoteResponse{Term: int32(term), VoteGranted: vote}, nil

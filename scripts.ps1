@@ -48,7 +48,7 @@ function Server {
     param (
         [string]$Addr,
         [int]$Port = 60000,
-        [int]$Timeout = 200,
+        [int]$Timeout = 2000,
         [boolean]$IsJointConsensus = $false,
         [string]$Hostfile = "/config/Hostfile",
         [string]$HostfileNew = "default"
@@ -83,7 +83,7 @@ function Servers {
         [int]$Size = 1,
         [string]$Addr,
         [int]$Port = 60000,
-        [int]$Timeout = 200,
+        [int]$Timeout = 2000,
         [string]$Hostfile = "/config/Hostfile"
     )
     if (-not $Addr) {
