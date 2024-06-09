@@ -214,7 +214,7 @@ func (s *server) ChangeMembership(ctx context.Context, in *comm.ChangeMembership
 // Raft purposes
 func (s *server) AppendEntries(ctx context.Context, in *comm.AppendEntriesRequest) (*comm.AppendEntriesResponse, error) {
 	s.Node.nodeMutex.Lock()
-	defer s.Node.nodeMutex.Unlock()
+	defer s.Node.nodeMutex.Unlock("[AppendEntries]")
 
 	//Reply false if term from leader < currentTerm (§5.1)
 	if in.Term < int32(s.Node.info.currentTerm) {
@@ -348,6 +348,6 @@ func (s *server) RequestVote(ctx context.Context, in *comm.RequestVoteRequest) (
 	} else {
 		log.Printf("[Election] Node %v requests for vote, declined", in.CandidateId)
 	}
-	s.serverMutex.Unlock()
+	s.serverMutex.Unlock("[RequestVote]")
 	return &comm.RequestVoteResponse{Term: int32(term), VoteGranted: vote}, nil
 }

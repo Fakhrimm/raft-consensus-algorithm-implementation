@@ -21,9 +21,9 @@ func (m *Mutex) Lock() {
 	m.isLocked = true
 }
 
-func (m *Mutex) Unlock() {
+func (m *Mutex) Unlock(caller string) {
 	if !m.isLocked {
-		log.Printf("[System] [Mutex] Tried unlocking a unlocked mutex")
+		log.Printf("[System] [Mutex] Tried unlocking a unlocked mutex by %v", caller)
 		return
 	}
 

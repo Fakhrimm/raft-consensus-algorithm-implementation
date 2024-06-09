@@ -43,12 +43,12 @@ func (node *Node) ElectionTimerHandler() {
 			log.Println("[Election] Election timeout occured")
 			node.startElection()
 			node.resetElectionTimer()
-			node.timerMutex.Unlock()
+			node.timerMutex.Unlock("[Election Timer]")
 		case <-node.electionResetSignal:
 			// log.Println("[Election] Received election reset signal")
 			node.timerMutex.Lock()
 			node.resetElectionTimer()
-			node.timerMutex.Unlock()
+			node.timerMutex.Unlock("[Election Reset Signal]")
 		}
 	}
 }
@@ -218,7 +218,7 @@ func (node *Node) sendElection(address []net.TCPAddr, interval time.Duration) in
 
 func (node *Node) startAppendEntries() {
 	// Unlock mutex from election
-	node.timerMutex.Unlock()
+	node.timerMutex.Unlock("[Start Append Entries]")
 
 	interval := time.Duration(node.info.timeoutAvgTime) * time.Second / 100 / 3
 	ticker := time.NewTicker(interval)
@@ -316,7 +316,7 @@ func (node *Node) sendAppendEntries(address []net.TCPAddr, interval time.Duratio
 			node.Call(peer.String(), func() {
 				response, err := node.grpcClient.AppendEntries(ctx, data)
 				if err != nil {
-					log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
+					//log.Printf("[Heartbeat] failed to send heartbeat to %v: %v", peer.String(), err)
 					// log.Printf("[Heartbeat] Node is a: %v", node.state)
 					heartbeatCh <- false
 				} else {
@@ -369,9 +369,18 @@ func (node *Node) sendAppendEntries(address []net.TCPAddr, interval time.Duratio
 func (node *Node) updateMajority() {
 	majority := node.getMajority(node.info.matchIndex, node.info.clusterCount)
 
+	if node.info.log[majority].Term != int32(node.info.currentTerm) {
+		log.Printf("[Transaction] [NON JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[majority].Term, node.info.currentTerm)
+		return
+	}
+
 	// TODO: Test joint consensus & improve concurrency
 	if node.info.isJointConsensus {
 		newMajority := node.getMajority(node.info.matchIndexNew, node.info.newClusterCount)
+		if node.info.log[newMajority].Term != int32(node.info.currentTerm) {
+			log.Printf("[Transaction] [JOINT] not updating majority, term mismatch: majority term %v, leader term %v", node.info.log[majority].Term, node.info.currentTerm)
+			return
+		}
 		node.CommitLogEntries(min(majority, newMajority))
 		// log.Printf("[DEBUG] majority: %v, newMajoirity: %v", majority, newMajority)
 	} else {
